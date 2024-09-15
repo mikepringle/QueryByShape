@@ -1,0 +1,42 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+	<PropertyGroup>
+		<TargetFramework>net8.0</TargetFramework>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<None Include="..\..\QueryByShape.png">
+			<Pack>True</Pack>
+			<PackagePath>\</PackagePath>
+		</None>
+		<None Include="..\..\README.md">
+			<Pack>True</Pack>
+			<PackagePath>\</PackagePath>
+		</None>
+	</ItemGroup>
+
+	<ItemGroup>
+		<PackageReference Include="GraphQL.Client.Abstractions" Version="6.1.0" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\QueryByShape\QueryByShape.csproj" PrivateAssets="all" />
+		<ProjectReference Include="..\QueryByShape.Analyzer\QueryByShape.Analyzer.csproj" PrivateAssets="all">
+			<ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+		</ProjectReference>
+	</ItemGroup>
+
+	<PropertyGroup>
+		<Title>QueryByShape.GraphQLClient</Title>
+		<Description>An Extension for the GraphQL.Client which generates queries at build time based on the request type.</Description>
+		<PackageReleaseNotes>Release Notes</PackageReleaseNotes>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<None Include="..\QueryByShape.Analyzer\bin\$(configuration)\netstandard2.0\QueryByShape.Analyzer.dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
+		<None Include="$(OutputPath)\QueryByShape.dll" Pack="true" PackagePath="lib\net8.0" Visible="false" />
+		<None Include="..\QueryByShape.Analyzer\bin\$(configuration)\netstandard2.0\QueryByShape.Attributes.dll" Pack="true" PackagePath="lib\net8.0" Visible="true" />
+		<None Include="..\QueryByShape.Analyzer\bin\$(configuration)\netstandard2.0\System.Text.Json.dll" Pack="true" PackagePath="analyzers/dotnet" Visible="false" />
+		<None Include="..\QueryByShape.Analyzer\bin\$(configuration)\netstandard2.0\Microsoft.Bcl.HashCode.dll" Pack="true" PackagePath="analyzers/dotnet" Visible="false" />
+		<None Include="..\QueryByShape.Analyzer\bin\$(configuration)\netstandard2.0\QueryByShape.Attributes.dll" Pack="true" PackagePath="analyzers/dotnet" Visible="false" />
+	</ItemGroup>
+</Project>

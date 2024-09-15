@@ -1,0 +1,14 @@
+﻿
+#nullable enable annotations
+#nullable disable warnings
+
+// Suppress warnings about [Obsolete] member usage in generated code.
+// #pragma warning disable CS0612, CS0618
+
+namespace Tests
+{
+    public partial class NameQuery
+    {
+        public static string ToGraphQLQuery() => @"query nameQuery { people:customers { firstName  lastName  middleName:middle  } }";                 
+    }
+}

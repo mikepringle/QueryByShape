@@ -1,0 +1,28 @@
+﻿
+#nullable enable annotations
+#nullable disable warnings
+
+// Suppress warnings about [Obsolete] member usage in generated code.
+// #pragma warning disable CS0612, CS0618
+
+namespace Tests
+{
+    public partial class FirstQuery
+    {
+        public static string ToGraphQLQuery() => @"query firstQuery($id:UUID!,$orderId:UUID!) { people(id:$id) { customerId  orders(orderId:$orderId) { orderId  orderDate  } firstName  lastName  middleName  } }";                 
+    }
+}
+
+#nullable enable annotations
+#nullable disable warnings
+
+// Suppress warnings about [Obsolete] member usage in generated code.
+// #pragma warning disable CS0612, CS0618
+
+namespace Tests
+{
+    public partial class SecondQuery
+    {
+        public static string ToGraphQLQuery() => @"query secondQuery($id:UUID!,$orderId:UUID!) { people(id:$id) { customerId  orders(orderId:$orderId) { orderId  orderDate  } firstName  lastName  middleName  } }";                 
+    }
+}

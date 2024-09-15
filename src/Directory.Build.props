@@ -1,0 +1,34 @@
+<Project>
+	<PropertyGroup>
+		<Nullable>enable</Nullable>
+		<ImplicitUsings>false</ImplicitUsings>
+		<LangVersion>Latest</LangVersion>
+	</PropertyGroup>
+
+	<PropertyGroup>
+		<VersionPrefix>1.0.7</VersionPrefix>
+		<VersionSuffix>beta</VersionSuffix>
+	</PropertyGroup>
+	
+	<ItemGroup>
+		<InternalsVisibleTo Include="QueryByShape.Analyzer.Tests" />
+	</ItemGroup>
+	
+	<PropertyGroup>
+		<Authors>mikepringle</Authors>
+		<Copyright>Copyright © Mike Pringle</Copyright>
+		<PackageVersion>$(VersionPrefix)-$(VersionSuffix)</PackageVersion>
+		<PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
+		<PackageLicenseExpression>MIT</PackageLicenseExpression>
+		<PackageProjectUrl>https://github.com/mikepringle/QueryByShape</PackageProjectUrl>
+		<PackageIcon>QueryByShape.png</PackageIcon>
+		<PackageReadmeFile>README.md</PackageReadmeFile>
+		<RepositoryUrl>https://github.com/mikepringle/QueryByShape</RepositoryUrl>
+		<PackageTags>GraphQL client query generate source generator</PackageTags>
+		<NoPackageAnalysis>true</NoPackageAnalysis>
+		<GeneratePackageOnBuild>False</GeneratePackageOnBuild>
+	</PropertyGroup>
+</Project>
+
+
+
