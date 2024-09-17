@@ -16,6 +16,7 @@
 	
 	<PropertyGroup>
 		<Authors>mikepringle</Authors>
+		<Company>Mike Pringle</Company>
 		<Copyright>Copyright © Mike Pringle</Copyright>
 		<PackageVersion>$(VersionPrefix)-$(VersionSuffix)</PackageVersion>
 		<PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>

@@ -27,8 +27,8 @@
 
 	<PropertyGroup>
 		<Title>QueryByShape.GraphQLClient</Title>
+		<PackageId>QueryByShape.GraphQLClient</PackageId>
 		<Description>An Extension for the GraphQL.Client which generates queries at build time based on the request type.</Description>
-		<PackageReleaseNotes>Release Notes</PackageReleaseNotes>
 	</PropertyGroup>
 
 	<ItemGroup>
