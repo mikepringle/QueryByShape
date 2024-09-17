@@ -19,6 +19,7 @@ jobs:
       working-directory: ./src/QueryByShape.GraphQLClient
       run: dotnet pack --configuration Release /p:Version=${VERSION} --output .
     - name: Push
+      working-directory: ./src/QueryByShape.GraphQLClient
       run: dotnet nuget push QueryByShape.GraphQLClient.${VERSION}.nupkg --source https://api.nuget.org/v3/index.json --api-key ${NUGET_TOKEN}
       env:
         NUGET_TOKEN: ${{ secrets.NUGET_TOKEN }}
