@@ -5,11 +5,6 @@
 		<LangVersion>Latest</LangVersion>
 	</PropertyGroup>
 
-	<PropertyGroup>
-		<VersionPrefix>1.0.7</VersionPrefix>
-		<VersionSuffix>beta</VersionSuffix>
-	</PropertyGroup>
-	
 	<ItemGroup>
 		<InternalsVisibleTo Include="QueryByShape.Analyzer.Tests" />
 	</ItemGroup>
@@ -18,7 +13,7 @@
 		<Authors>mikepringle</Authors>
 		<Company>Mike Pringle</Company>
 		<Copyright>Copyright © Mike Pringle</Copyright>
-		<PackageVersion>$(VersionPrefix)-$(VersionSuffix)</PackageVersion>
+		<PackageVersion>$(Version)</PackageVersion>
 		<PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>
 		<PackageProjectUrl>https://github.com/mikepringle/QueryByShape</PackageProjectUrl>
