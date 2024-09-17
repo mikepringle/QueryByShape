@@ -3,7 +3,7 @@ QueryByShape autogenerates GraphQL queries at build-time based on the "shape" of
 
 ## Usage
 ``` C#
-GraphQLResponse<films> filmsResponse = await client.SendQueryByAsync<StarWarsFilms>(variables);
+GraphQLResponse<StarWarsFilms> filmsResponse = await client.SendQueryByAsync<StarWarsFilms>(variables);
 StarWarsFilms films = filmsResponse?.Data;
 ```
 
@@ -42,7 +42,7 @@ All samples are written for the [Star Wars GraphQL API](https://studio.apollogra
 
 <table>
 <tr>
-<td> Query Options - C# </td> <td> GraphQL Output </td>
+  <td> Query Options - C# </td> 
 </tr>
 <tr>
 <td>
@@ -66,6 +66,11 @@ namespace StarWars
 }
 ```
 </td>
+</tr>
+<tr>
+<td> GraphQL Output </td>
+</tr>
+<tr>
 <td valign="top">
 
 ``` GraphQL
@@ -83,7 +88,7 @@ query SimpleIsh {
 
 <table>
 <tr>
-<td> Variables and Arguments - C# </td> <td> GraphQL Output </td>
+<td> Variables and Arguments - C# </td>
 </tr>
 <tr>
 <td>
@@ -117,6 +122,12 @@ namespace StarWars
 ```
 
 </td>
+</tr>
+<tr>
+<td> GraphQL Output </td>
+</tr>
+<tr>
+
 <td valign="top">
 
 ``` GraphQL
@@ -137,7 +148,7 @@ query VariablesAndArgumentsQuery($id: ID!) {
 
 <table>
 <tr>
-<td> Aliasing - C# </td> <td> GraphQL Output </td>
+<td> Aliasing - C# </td>
 </tr>
 <tr>
 <td>
@@ -170,6 +181,12 @@ namespace StarWars
 ```
 
 </td>
+</tr>
+<tr>
+<td> GraphQL Output </td>
+</tr>
+<tr>
+
 <td valign="top">
 
 ``` GraphQL
@@ -190,7 +207,7 @@ query ExampleQuery ($newHopeId: ID!, $empireId: ID!) {
 
 <table>
 <tr>
-<td> Supported System.Text.Json Attributes - C# </td> <td> GraphQL Output </td>
+<td> Supported System.Text.Json Attributes - C# </td>
 </tr>
 <tr>
 <td>
@@ -223,6 +240,12 @@ namespace StarWars
 ```
 
 </td>
+</tr>
+<tr>
+<td> GraphQL Output </td>
+</tr>
+<tr>
+
 <td valign="top">
 
 ``` GraphQL
