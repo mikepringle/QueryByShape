@@ -19,7 +19,7 @@ jobs:
     - name: Set VERSION variable from tag
       if: github.ref == 'refs/heads/main'
       run: | 
-        git TAG_VERSION=$(git describe --tags --abbrev=0)
+        TAG_VERSION=$(git describe --tags --abbrev=0)
         echo "VERSION=${TAG_VERSION/v}" >> $GITHUB_ENV
     - name: Pack
       working-directory: ./src/QueryByShape.GraphQLClient
