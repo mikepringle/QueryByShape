@@ -39,14 +39,8 @@ This project is currently in beta you will need to [enable prerelease packages](
 ## Example Queries
 All samples are written for the [Star Wars GraphQL API](https://studio.apollographql.com/public/star-wars-swapi)
 
-
-<table>
-<tr>
-  <td> Query Options - C# </td> 
-</tr>
-<tr>
-<td>
-
+---
+#### Query Options - C#
 ``` C#
 using QueryByShape;
 
@@ -65,13 +59,8 @@ namespace StarWars
     }
 }
 ```
-</td>
-</tr>
-<tr>
-<td> GraphQL Output </td>
-</tr>
-<tr>
-<td valign="top">
+
+#### GraphQL Output
 
 ``` GraphQL
 query SimpleIsh {
@@ -80,19 +69,8 @@ query SimpleIsh {
   }
 }
 ```
-
-</td>
-</tr>
-</table>
-
-
-<table>
-<tr>
-<td> Variables and Arguments - C# </td>
-</tr>
-<tr>
-<td>
-
+---
+#### Variables and Arguments - C#
 ``` C# 
 using QueryByShape;
 using System.Collections.Generic;
@@ -120,16 +98,7 @@ namespace StarWars
     }
 }
 ```
-
-</td>
-</tr>
-<tr>
-<td> GraphQL Output </td>
-</tr>
-<tr>
-
-<td valign="top">
-
+#### GraphQL Output </td>
 ``` GraphQL
 query VariablesAndArgumentsQuery($id: ID!) {
   person (id: $id) {
@@ -141,18 +110,8 @@ query VariablesAndArgumentsQuery($id: ID!) {
   }
 }
 ```
-
-</td>
-</tr>
-</table>
-
-<table>
-<tr>
-<td> Aliasing - C# </td>
-</tr>
-<tr>
-<td>
-
+---
+#### Aliasing - C#
 ``` C# 
 using QueryByShape;
 using System.Collections.Generic;
@@ -179,16 +138,7 @@ namespace StarWars
     }
 }
 ```
-
-</td>
-</tr>
-<tr>
-<td> GraphQL Output </td>
-</tr>
-<tr>
-
-<td valign="top">
-
+#### GraphQL Output
 ``` GraphQL
 query ExampleQuery ($newHopeId: ID!, $empireId: ID!) {
   newHope: film (id: $newHopeId ) {
@@ -200,18 +150,8 @@ query ExampleQuery ($newHopeId: ID!, $empireId: ID!) {
 }
 
 ```
-
-</td>
-</tr>
-</table>
-
-<table>
-<tr>
-<td> Supported System.Text.Json Attributes - C# </td>
-</tr>
-<tr>
-<td>
-
+---
+#### Supported System.Text.Json Attributes - C#
 ``` C# 
 using QueryByShape;
 using System.Collections.Generic;
@@ -238,16 +178,7 @@ namespace StarWars
     }
 }
 ```
-
-</td>
-</tr>
-<tr>
-<td> GraphQL Output </td>
-</tr>
-<tr>
-
-<td valign="top">
-
+#### GraphQL Output </td>
 ``` GraphQL
 query SystemTextJsonAttributes($id: ID!) {
   person (id: $id) {
@@ -258,7 +189,3 @@ query SystemTextJsonAttributes($id: ID!) {
 }
 
 ```
-
-</td>
-</tr>
-</table>
