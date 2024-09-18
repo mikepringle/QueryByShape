@@ -9,6 +9,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
     - name: Setup .NET
       uses: actions/setup-dotnet@v4
       with:
@@ -19,7 +21,6 @@ jobs:
     - name: Set VERSION variable from tag
       if: github.ref == 'refs/heads/main'
       run: | 
-        git fetch --tags
         TAG_VERSION=$(git describe --tags --abbrev=0)
         echo "VERSION=${TAG_VERSION/v}" >> $GITHUB_ENV
     - name: Pack
