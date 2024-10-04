@@ -6,6 +6,7 @@ using QueryByShape.Analyzer.Diagnostics;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.ComponentModel;
 using System.Linq;
 using System.Text.Json.Serialization;
 using System.Threading;
@@ -109,6 +110,7 @@ namespace QueryByShape.Analyzer
 
                     case AttributeNames.VARIABLE:
                         var (variablName, graphType) = attribute.GetConstructorArguments();
+                        var defaultValue = attribute.TryGetNamedArgument<object>(nameof(VariableAttribute.DefaultValue), out var value) ? value : null;
 
                         if (variables.ContainsKey(variablName))
                         {
@@ -116,7 +118,7 @@ namespace QueryByShape.Analyzer
                         }
                         else
                         {
-                            variables.Add(variablName, new VariableMetadata(variablName, graphType, attribute.ApplicationSyntaxReference));
+                            variables.Add(variablName, new VariableMetadata(variablName, graphType, defaultValue, attribute.ApplicationSyntaxReference));
                         }
                     
                         break;
@@ -199,10 +201,8 @@ namespace QueryByShape.Analyzer
                         break;
 
                     case AttributeNames.JSON_IGNORE when metadata.Ignore is null:
-                        var ignoreCondition = attribute.NamedArguments.Length is 1 
-                            && attribute.NamedArguments[0].Key is nameof(JsonIgnoreAttribute.Condition) 
-                            && Enum.TryParse<JsonIgnoreCondition>(attribute.NamedArguments[0].Value.Value?.ToString(), out var argument) 
-                            ? argument
+                        var ignoreCondition = attribute.TryGetNamedArgument<int>(nameof(JsonIgnoreAttribute.Condition), out var condition)
+                            ? (JsonIgnoreCondition) condition
                             : JsonIgnoreCondition.Always;
 
                         metadata.Ignore = ignoreCondition is not JsonIgnoreCondition.Never;

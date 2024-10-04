@@ -47,5 +47,5 @@ namespace QueryByShape.Analyzer
 
     internal record ArgumentMetadata(string Name, string VariableName, SyntaxReference? Reference);
 
-    internal record VariableMetadata(string Name, string GraphType, SyntaxReference? Reference);
+    internal record VariableMetadata(string Name, string GraphType, object? DefaultValue, SyntaxReference? Reference);
 }

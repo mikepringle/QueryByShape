@@ -11,7 +11,7 @@ namespace QueryByShape
 
         internal string GraphType { get; }
 
-        internal object DefaultValue { get; }
+        public object DefaultValue { get; set; }
 
         public VariableAttribute(string name, string graphType)
         {

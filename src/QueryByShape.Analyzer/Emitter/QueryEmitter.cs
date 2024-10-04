@@ -25,7 +25,6 @@ namespace QueryByShape.Analyzer
                 ctx.AddSource($"QueryByShape.{query.TypeFullName}.Query.g.cs", SourceText.From(generatedClass, Encoding.UTF8));
             }
         }
-       
         private string EmitQuery()
         {
             // variables dynamic or static set?  use case
@@ -34,7 +33,7 @@ namespace QueryByShape.Analyzer
             _sb.Append("query ");
             _sb.Append(FormatName(query.Name ?? query.TypeName));
 
-            EmitParameters(query.Variables?.Select(v => (v.Name, v.GraphType)));
+            EmitParameters(query.Variables?.Select(v => v.DefaultValue == null ? $"{v.Name}:{v.GraphType}" : $"{v.Name}:{v.GraphType} = {JsonSerializer.Serialize(v.DefaultValue)}"));
             EmitType(query.Type!, query.Options, 1);
             
             return _sb.ToString();
@@ -73,7 +72,7 @@ namespace QueryByShape.Analyzer
                     _sb.Append(member.AliasOf);
                 }
 
-                EmitParameters(member.Arguments?.Select(a => (a.Name, a.VariableName)));
+                EmitParameters(member.Arguments?.Select(a => $"{a.Name}:{a.VariableName}"));
                     
                 if (member.ChildrenType?.Members?.Count > 0)
                 {
@@ -87,29 +86,15 @@ namespace QueryByShape.Analyzer
             _sb.AppendLine("}", depth - 1);
         }
 
-        internal void EmitParameters(IEnumerable<(string, string)>? items)
+        internal void EmitParameters(IEnumerable<string>? items)
         {
             if (items == null || !items.Any())
             {
                 return;
             }
 
-            var isFirst = true;
-
             _sb.Append("(");
-
-            foreach (var item in items)
-            {
-                var (key, value) = item;
-
-                if (isFirst == false)
-                {
-                    _sb.Append(",");
-                }
-
-                _sb.Append($"{key}:{value}");
-                isFirst = false;
-            }
+            _sb.Append(string.Join(",", items));
             _sb.Append(")");
         }
     }

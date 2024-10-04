@@ -13,23 +13,12 @@ StarWarsFilms films = filmsResponse?.Data;
 - Performance - generate queries at build time
 
 ## v1 Features
-- [x] Queries
-- [x] Variables
-- [x] Arguments
-- [x] Aliasing
-- [x] JsonIgore (System.Text.Json)
-- [x] JsonPropertyName (System.Text.Json)
-- [ ] Default Variables
-- [ ] Interfaces
-- [ ] API Documentation
-- [ ] Unions (possibly v1.5)
-
-## Limitations
-- Requires .NET 8 or higher
-- Only supports System.Text.Json / GraphQL.Client.Serializer.SystemTextJson
-- Queries must be partial
-- Queries must define variables / arguments ahead of time
-- Dictionaries are not supprted
+- Queries
+- Variables
+- Arguments
+- Aliasing
+- JsonIgore (System.Text.Json)
+- JsonPropertyName (System.Text.Json)
 
 ## Installation
 This project is currently in beta you will need to [enable prerelease packages](https://learn.microsoft.com/en-us/nuget/create-packages/prerelease-packages) in UI or cli    
@@ -189,3 +178,12 @@ query SystemTextJsonAttributes($id: ID!) {
 }
 
 ```
+
+
+## Limitations
+- Requires .NET 8 or higher
+- Only supports System.Text.Json / GraphQL.Client.Serializer.SystemTextJson
+- Queries must be partial
+- Queries must define variables / arguments ahead of time
+- Dictionaries are not supprted
+

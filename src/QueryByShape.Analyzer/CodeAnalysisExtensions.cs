@@ -1,6 +1,7 @@
 ﻿using Microsoft.CodeAnalysis;
 using System;
 using System.Linq;
+using System.Text.Json.Serialization;
 
 namespace QueryByShape.Analyzer
 {
@@ -24,6 +25,21 @@ namespace QueryByShape.Analyzer
 
         public static string GetConstructorArgument(this AttributeData attribute) => GetConstructorArguments(attribute)[0];
         public static string[] GetConstructorArguments(this AttributeData attribute) => attribute.ConstructorArguments.Select(c => c.Value?.ToString() ?? "").ToArray();
+        
+        public static bool TryGetNamedArgument<T>(this AttributeData attribute, string name, out T? value)
+        {
+            value = default;
+
+            var arguments = attribute.NamedArguments.Where(a => a.Key == name);
+            
+            if (arguments.Any())
+            {
+                value = (T)arguments.First().Value.Value; 
+                return true;
+            }
+
+            return false;
+        }
 
         public static string GetNamespace(this INamedTypeSymbol symbol)
         {

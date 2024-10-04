@@ -257,6 +257,42 @@ public class SnapshotTests
         return TestHelper.VerifySnapshot(source);
     }
 
+    [Fact]
+    public Task GeneratesArgumentsAndVariablesWithDefaults()
+    {
+        var source = @"
+            using QueryByShape;
+            using System.Collections.Generic;
+
+            namespace Tests
+            {
+                [Query]
+                [Variable(""$id"", ""UUID!"")]
+                [Variable(""$isActive"", ""Boolean"", DefaultValue = true)]
+                public partial class NameQuery : IGeneratedQuery
+                {
+                    [Argument(""id"", ""$id"")]
+                    [Argument(""isActive"", ""$isActive"")]
+                    public List<Customer> People { get; set; }
+                }
+
+                public class Customer : Person
+                {
+                    public Guid CustomerId { get; set; }
+                }
+
+                public class Person
+                {
+                    public string FirstName { get; set; }
+                    public string LastName { get; set; }
+                    public string MiddleName { get; set; } 
+                }
+            }
+        ";
+
+        return TestHelper.VerifySnapshot(source);
+    }
+
 
     [Fact]
     public Task GeneratesWithJsonPropertyName()
