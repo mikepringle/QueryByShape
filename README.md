@@ -1,4 +1,6 @@
 # QueryByShape
+[![NuGet Version](https://img.shields.io/nuget/vpre/QueryByShape.GraphQLClient?labelColor=%233F65F5&color=%23FFF)](https://www.nuget.org/packages/QueryByShape.GraphQLClient)
+
 QueryByShape autogenerates GraphQL queries at build-time based on the "shape" of your result type.  The current / first implementation is an extension to the [GraphQL.Client (.NET)](https://github.com/graphql-dotnet/graphql-client). 
 
 ## Usage
@@ -24,6 +26,12 @@ StarWarsFilms films = filmsResponse?.Data;
 This project is currently in beta you will need to [enable prerelease packages](https://learn.microsoft.com/en-us/nuget/create-packages/prerelease-packages) in UI or cli    
 `dotnet add package QueryByShape.GraphQLClient --prerelease `  
 
+## Limitations
+- Requires .NET 8 or higher
+- Only supports System.Text.Json / GraphQL.Client.Serializer.SystemTextJson
+- Queries must be partial
+- Queries must define variables / arguments ahead of time
+- Dictionaries are not supprted
 
 ## Example Queries
 All samples are written for the [Star Wars GraphQL API](https://studio.apollographql.com/public/star-wars-swapi)
@@ -179,11 +187,4 @@ query SystemTextJsonAttributes($id: ID!) {
 
 ```
 
-
-## Limitations
-- Requires .NET 8 or higher
-- Only supports System.Text.Json / GraphQL.Client.Serializer.SystemTextJson
-- Queries must be partial
-- Queries must define variables / arguments ahead of time
-- Dictionaries are not supprted
 
