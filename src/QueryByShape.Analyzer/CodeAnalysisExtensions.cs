@@ -81,7 +81,7 @@ namespace QueryByShape.Analyzer
 
                 while (baseType is not null)
                 {
-                    if (type.Equals(to, SymbolEqualityComparer.Default))
+                    if (type.Equals(baseType, SymbolEqualityComparer.Default))
                     {
                         return true;
                     }
