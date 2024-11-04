@@ -14,7 +14,7 @@
 		  <PrivateAssets>all</PrivateAssets>
 		  <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
 		</PackageReference>
-		<PackageReference Include="System.Text.Json" Version="8.0.4" PrivateAssets="all" GeneratePathProperty="true" />
+		<PackageReference Include="System.Text.Json" Version="8.0.5" PrivateAssets="all" GeneratePathProperty="true" />
 	</ItemGroup>
 	
 	<PropertyGroup>
@@ -43,6 +43,6 @@
 	</ItemGroup-->
 
 	<ItemGroup>
-	  <ProjectReference Include="..\QueryByShape.Attributes\QueryByShape.Attributes.csproj"  PrivateAssets="all" />
+	  <ProjectReference Include="..\QueryByShape.Attributes\QueryByShape.Attributes.csproj" PrivateAssets="all" />
 	</ItemGroup>
 </Project>
