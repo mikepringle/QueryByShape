@@ -11,9 +11,9 @@ namespace QueryByShape.Analyzer.Diagnostics
             defaultSeverity: DiagnosticSeverity.Warning
         );
 
-        public static DiagnosticMetadata Create(string variableName, Location location)
+        public static DiagnosticMetadata CreateMetadata(string variableName, Location location)
         {
-            return new DiagnosticMetadata(Descriptor, location.ToTrimmedLocation(), new EquatableArray<string>([variableName]));
+            return new DiagnosticMetadata(Descriptor, location.ToTrimmedLocation(), [variableName]);
         }
     }
 }

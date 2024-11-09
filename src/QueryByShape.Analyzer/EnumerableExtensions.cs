@@ -1,20 +1,13 @@
-﻿using System;
+﻿using Microsoft.CodeAnalysis.CSharp.Syntax;
+using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Linq;
 
 namespace QueryByShape.Analyzer
 {
     public static class EnumerableExtensions
     {
-        internal static bool TrySingle<T>(this IEnumerable<T> items, Func<T, bool> predicate, out T? result)
-        {
-            result = items.SingleOrDefault(predicate);
-            return result is not null;
-        }
-
-        internal static EquatableArray<T>? ToEquatableArray<T>(this ICollection<T> list) where T: IEquatable<T> =>
-            list.Count > 0 ? new EquatableArray<T>(list.ToArray()) : null;
-
         internal static void Deconstruct<T>(this IList<T> list, out T first, out T second)
         {
             first = list.Count > 0 ? list[0] : throw new IndexOutOfRangeException();

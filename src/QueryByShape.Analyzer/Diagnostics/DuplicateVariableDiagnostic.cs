@@ -10,9 +10,9 @@ namespace QueryByShape.Analyzer.Diagnostics
             messageFormat: "Variable names must be unique. '{0}' already exists."
         );
 
-        public static DiagnosticMetadata Create(string variableName, Location location)
+        public static Diagnostic Create(string variableName, Location location)
         {
-            return new DiagnosticMetadata(Descriptor, location.ToTrimmedLocation(), new EquatableArray<string>([variableName]));
+            return Diagnostic.Create(Descriptor, location, [variableName]);
         }
     }
 }

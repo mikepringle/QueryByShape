@@ -2,33 +2,32 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
 
 namespace QueryByShape.Analyzer
 {
-    internal readonly struct EquatableArray<T> : IEquatable<EquatableArray<T>>, IEnumerable<T> where T : IEquatable<T>
+    internal static class EquatableArrayBuilder
     {
-        public static readonly EquatableArray<T> Empty = new(Array.Empty<T>());
+        public static EquatableArray<T> Create<T>(ReadOnlySpan<T> values) where T : IEquatable<T> => new(values.ToArray());
+    }
+
+    /// <summary>
+    /// Creates a new <see cref="EquatableArray{T}"/> instance.
+    /// </summary>
+    /// <param name="array">The input <see cref="ImmutableArray"/> to wrap.</param>
+    [CollectionBuilder(typeof(EquatableArrayBuilder), nameof(EquatableArrayBuilder.Create))]
+    internal readonly struct EquatableArray<T>(T[] array) : IEquatable<EquatableArray<T>>, IEnumerable<T> where T : IEquatable<T>
+    {
+        public static readonly EquatableArray<T> Empty = new([]);
 
         /// <summary>
         /// The underlying <typeparamref name="T"/> array.
         /// </summary>
-        private readonly T[]? _array;
-
-        /// <summary>
-        /// Creates a new <see cref="EquatableArray{T}"/> instance.
-        /// </summary>
-        /// <param name="array">The input <see cref="ImmutableArray"/> to wrap.</param>
-        public EquatableArray(T[] array)
-        {
-            _array = array;
-        }
-
+        private readonly T[]? _array = array;
+        
         /// <sinheritdoc/>
         public bool Equals(EquatableArray<T> array)
         {
-            // return ref Dictionary<T, T>.CollectionsMarshalHelper
-
-
             return AsSpan().SequenceEqual(array.AsSpan());
         }
 
@@ -73,23 +72,17 @@ namespace QueryByShape.Analyzer
         /// <sinheritdoc/>
         IEnumerator<T> IEnumerable<T>.GetEnumerator()
         {
-            return ((IEnumerable<T>)(_array ?? Array.Empty<T>())).GetEnumerator();
+            return ((IEnumerable<T>)(_array ?? [])).GetEnumerator();
         }
 
         /// <sinheritdoc/>
         IEnumerator IEnumerable.GetEnumerator()
         {
-            return ((IEnumerable<T>)(_array ?? Array.Empty<T>())).GetEnumerator();
+            return ((IEnumerable<T>)(_array ?? [])).GetEnumerator();
         }
 
         public int Count => _array?.Length ?? 0;
 
-        /// <summary>
-        /// Checks whether two <see cref="EquatableArray{T}"/> values are the same.
-        /// </summary>
-        /// <param name="left">The first <see cref="EquatableArray{T}"/> value.</param>
-        /// <param name="right">The second <see cref="EquatableArray{T}"/> value.</param>
-        /// <returns>Whether <paramref name="left"/> and <paramref name="right"/> are equal.</returns>
         public static bool operator ==(EquatableArray<T> left, EquatableArray<T> right)
         {
             return left.Equals(right);

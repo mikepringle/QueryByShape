@@ -11,9 +11,9 @@ namespace QueryByShape.Analyzer.Diagnostics
             messageFormat: "Argument names must be unique. '{0}' already exists."
         );
 
-        public static DiagnosticMetadata Create(string argumentName, Location location)
+        public static Diagnostic Create(string argumentName, Location location)
         {
-            return new DiagnosticMetadata(Descriptor, location.ToTrimmedLocation(), new EquatableArray<string>([argumentName]));
+            return Diagnostic.Create(Descriptor, location, [argumentName]);
         }
     }
 }

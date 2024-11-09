@@ -10,9 +10,9 @@ namespace QueryByShape.Analyzer.Diagnostics
             messageFormat: "The variable '{1}' was not found.  (refenced in argument '{0}')"
         );
 
-        public static DiagnosticMetadata Create(string argumentName, string variableName, Location location)
+        public static DiagnosticMetadata CreateMetadata(string argumentName, string variableName, Location location)
         {
-            return new DiagnosticMetadata(Descriptor, location.ToTrimmedLocation(), new EquatableArray<string>([argumentName, variableName]));
+            return new DiagnosticMetadata(Descriptor, location.ToTrimmedLocation(), [argumentName, variableName]);
         }
     }
 }

@@ -101,9 +101,9 @@ namespace QueryByShape.Analyzer
         public bool IsTypeSerializable(INamedTypeSymbol type)
         {
             return (
-                type.IsAssignableTo(Delegate)
-                    || type.IsAssignableTo(MemberInfo)
-                    || type.IsAssignableTo(IDictionaryOfKV)
+                Delegate.IsAssignableFrom(type)
+                    || MemberInfo.IsAssignableFrom(type)
+                    || IDictionaryOfKV.IsAssignableFrom(type)
                     || type.Equals(IntPtr, SymbolEqualityComparer.Default)
                     || type.Equals(UIntPtr, SymbolEqualityComparer.Default)
             ) is false;
@@ -127,15 +127,11 @@ namespace QueryByShape.Analyzer
             {
                 return false;
             }
-            else if (namedTypeSymbol.IsImplementing(IEnumerableOfT))
+            else if (namedTypeSymbol.TryGetCompatibleGenericBaseType(IEnumerableOfT, out var instance))
             {
-                effectiveType = namedTypeSymbol!.TypeArguments[0] as INamedTypeSymbol;
+                effectiveType = instance?.TypeArguments[0] as INamedTypeSymbol;
             }
-            else if (namedTypeSymbol.AllInterfaces.TrySingle(s => s.IsImplementing(IEnumerableOfT), out var ienumerable))
-            {
-                effectiveType = ienumerable!.TypeArguments[0] as INamedTypeSymbol;
-            }
-
+                        
             bool hasChildren = effectiveType == null || CanHaveChildren(effectiveType);
             childrenType = hasChildren ? (effectiveType ?? type) as INamedTypeSymbol : null;
             return hasChildren;
