@@ -1,107 +1,9 @@
-﻿using VerifyXunit;
-using Xunit;
-using QueryByShape;
-using QueryByShape.Analyzer.Diagnostics;
+﻿using QueryByShape.Analyzer.Diagnostics;
 
-namespace QueryByShape.Analyzer.Tests;
+namespace QueryByShape.Analyzer.Tests.SourceGenerator;
 
 public class DiagnosticTests
 {
-    [Fact]
-    public void GeneratesPartialClassDiagnostic()
-    {
-        var source = @"
-            using QueryByShape;
-            using System.Collections.Generic;
-
-            namespace Tests
-            {
-                [Query]
-                public class NameQuery : IGeneratedQuery
-                {
-                    public List<Person> People { get; set; }
-                }
-
-                public class Person
-                {
-                    public string Name { get; set; }
-                }
-            }
-        ";
-
-        TestHelper.VerifyDiagnostic(source, QueryMustBePartialDiagnostic.Descriptor);
-    }
-
-    [Fact]
-    public void GeneratesDuplicateVariableDiagnostic()
-    {
-        var source = @"
-            using QueryByShape;
-            using System.Collections.Generic;
-
-            namespace Tests
-            {
-                [Query]
-                [Variable(""$id"", ""UUID!"")]
-                [Variable(""$id"", ""UUID!"")]
-                public partial class NameQuery : IGeneratedQuery
-                {
-                    [Argument(""id"", ""$id"")]
-                    public List<Customer> People { get; set; }
-                }
-
-                public class Customer : Person
-                {
-                    public Guid CustomerId { get; set; }
-                }
-
-                public class Person
-                {
-                    public string FirstName { get; set; }
-                    public string LastName { get; set; }
-                    public string MiddleName { get; set; } 
-                }
-            }
-        ";
-
-        TestHelper.VerifyDiagnostic(source, DuplicateVariableDiagnostic.Descriptor);
-    }
-
-    [Fact]
-    public void GeneratesDuplicateArgumentDiagnostic()
-    {
-        var source = @"
-            using QueryByShape;
-            using System.Collections.Generic;
-
-            namespace Tests
-            {
-                [Query]
-                [Variable(""$id"", ""UUID!"")]
-                public partial class NameQuery : IGeneratedQuery
-                {
-                    [Argument(""id"", ""$id"")]
-                    [Argument(""id"", ""$id"")]
-                    public List<Customer> People { get; set; }
-                }
-
-                public class Customer : Person
-                {
-                    public Guid CustomerId { get; set; }
-                }
-
-                public class Person
-                {
-                    public string FirstName { get; set; }
-                    public string LastName { get; set; }
-                    public string MiddleName { get; set; } 
-                }
-            }
-        ";
-
-        TestHelper.VerifyDiagnostic(source, DuplicateArgumentDiagnostic.Descriptor);
-    }
-
     [Fact]
     public void GeneratesMissingVariableDiagnostic()
     {
@@ -132,7 +34,7 @@ public class DiagnosticTests
             }
         ";
 
-        TestHelper.VerifyDiagnostic(source, MissingVariableDiagnostic.Descriptor);
+        TestHelper.VerifyGeneratorDiagnostic(source, MissingVariableDiagnostic.Descriptor);
     }
 
     [Fact]
@@ -189,7 +91,7 @@ public class DiagnosticTests
             }
         ";
 
-        TestHelper.VerifyDiagnostic(source, MissingVariableDiagnostic.Descriptor);
+        TestHelper.VerifyGeneratorDiagnostic(source, MissingVariableDiagnostic.Descriptor);
     }
 
     [Fact]
@@ -222,7 +124,7 @@ public class DiagnosticTests
             }
         ";
 
-        TestHelper.VerifyDiagnostic(source, UnusedVariableDiagnostic.Descriptor);
+        TestHelper.VerifyGeneratorDiagnostic(source, UnusedVariableDiagnostic.Descriptor);
     }
 
     [Fact]
@@ -281,7 +183,7 @@ public class DiagnosticTests
             }
         ";
 
-        TestHelper.VerifyDiagnostic(source, UnusedVariableDiagnostic.Descriptor);
+        TestHelper.VerifyGeneratorDiagnostic(source, UnusedVariableDiagnostic.Descriptor);
     }
 
     [Fact]

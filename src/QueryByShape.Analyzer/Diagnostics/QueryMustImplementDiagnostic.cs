@@ -2,12 +2,12 @@
 
 namespace QueryByShape.Analyzer.Diagnostics
 {
-    internal record QueryMustBePartialDiagnostic
+    internal record QueryMustImplementDiagnostic
     {
         internal static DiagnosticDescriptor Descriptor { get; } = DescriptorHelper.Create(
-            id: 10,
-            title: "Must be Partial",
-            messageFormat: "The class '{0}' decorated with the QueryAttribute must be partial"
+            id: 101,
+            title: "Must implement IGeneratedQuery",
+            messageFormat: "The class '{0}' decorated with the QueryAttribute must implement IGeneratedQuery"
         );
 
         public static Diagnostic Create(string className, Location location)

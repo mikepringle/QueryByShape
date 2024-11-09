@@ -15,8 +15,8 @@ namespace QueryByShape.Analyzer
 {
     internal class QueryParser(NamedTypeSymbols symbols)
     {
-        private readonly List<DiagnosticMetadata> _diagnostics = new();
-        Dictionary<string, (TypeMetadata, List<ArgumentMetadata>)> _typeCache = new();
+        private readonly List<DiagnosticMetadata> _diagnostics = [];
+        private readonly Dictionary<string, (TypeMetadata, List<ArgumentMetadata>)> _typeCache = [];
 
         public static EquatableArray<ParseResult> Process(ImmutableArray<(TypeDeclarationSyntax declaration, SemanticModel semanticModel)> contexts, NamedTypeSymbols symbols, CancellationToken cancellationToken)
         {
@@ -36,7 +36,7 @@ namespace QueryByShape.Analyzer
                 items[i] = parser.Parse(declaration, declaredSymbol);
             }
 
-            return new(items);
+            return [.. items];
         }
 
         public ParseResult Parse(TypeDeclarationSyntax typeDeclaration, INamedTypeSymbol declaredSymbol)
@@ -45,26 +45,26 @@ namespace QueryByShape.Analyzer
             
             if (typeDeclaration.Modifiers.Any(m => m.IsKind(SyntaxKind.PartialKeyword)) is false) 
             {
-                _diagnostics.Add(QueryMustBePartialDiagnostic.Create(declaredSymbol.Name, typeDeclaration.GetLocation()));
+                //_diagnostics.Add(QueryMustBePartialDiagnostic.Create(declaredSymbol.Name, typeDeclaration.GetLocation()));
             }
 
             (query.Type, var queryArguments) = ParseTypeMetadata(declaredSymbol, query.Options);
             UpdateQueryFromAttributes(query, declaredSymbol.GetAttributes());
             ValidateVariables(query.Variables, queryArguments);
             
-            return (query, new(_diagnostics.ToArray()));
+            return (query, [.. _diagnostics]);
         }
 
         public void ValidateVariables(IEnumerable<VariableMetadata>? variables, IList<ArgumentMetadata> arguments)
         {
-            var variableLookup = variables?.ToDictionary(v => v.Name) ?? new();
+            var variableLookup = variables?.ToDictionary(v => v.Name) ?? [];
             var variableUsage = variableLookup.Keys.ToHashSet();
 
             foreach (var argument in arguments)
             {
                 if (variableLookup.ContainsKey(argument.VariableName) is false)
                 {
-                    _diagnostics.Add(MissingVariableDiagnostic.Create(argument.Name, argument.VariableName, argument.Reference.GetLocation()));
+                    _diagnostics.Add(MissingVariableDiagnostic.CreateMetadata(argument.Name, argument.VariableName, argument.Reference.GetLocation()));
                 }
                 else if (variableUsage.Contains(argument.VariableName))
                 {
@@ -74,14 +74,14 @@ namespace QueryByShape.Analyzer
 
             foreach (var variableName in variableUsage)
             {
-                _diagnostics.Add(UnusedVariableDiagnostic.Create(variableName, variableLookup[variableName].Reference.GetLocation()));
+                _diagnostics.Add(UnusedVariableDiagnostic.CreateMetadata(variableName, variableLookup[variableName].Reference.GetLocation()));
             }
         }
 
 
         private void UpdateQueryFromAttributes(QueryMetadata query, ImmutableArray<AttributeData> attributes)
         {
-            Dictionary<string, VariableMetadata> variables = new();
+            Dictionary<string, VariableMetadata> variables = [];
 
             foreach (var attribute in attributes)
             {
@@ -112,11 +112,7 @@ namespace QueryByShape.Analyzer
                         var (variablName, graphType) = attribute.GetConstructorArguments();
                         var defaultValue = attribute.TryGetNamedArgument<object>(nameof(VariableAttribute.DefaultValue), out var value) ? value : null;
 
-                        if (variables.ContainsKey(variablName))
-                        {
-                            _diagnostics.Add(DuplicateVariableDiagnostic.Create(variablName, attribute.GetLocation()));
-                        }
-                        else
+                        if (variables.ContainsKey(variablName) == false)
                         {
                             variables.Add(variablName, new VariableMetadata(variablName, graphType, defaultValue, attribute.ApplicationSyntaxReference));
                         }
@@ -125,7 +121,7 @@ namespace QueryByShape.Analyzer
                 }
             }
 
-            query.Variables = variables.Values.ToEquatableArray();
+            query.Variables = [.. variables.Values];
         }
 
         private (TypeMetadata, List<ArgumentMetadata>) ParseTypeMetadata(INamedTypeSymbol type, QueryOptions options)
@@ -139,8 +135,8 @@ namespace QueryByShape.Analyzer
                 return _typeCache[name];
             }
 
-            Dictionary<string, MemberMetadata> members = new();
-            List<ArgumentMetadata> arguments = new();
+            Dictionary<string, MemberMetadata> members = [];
+            List<ArgumentMetadata> arguments = [];
 
             while (current?.Name is not null or "Object" or "ValueType")
             {
@@ -152,9 +148,11 @@ namespace QueryByShape.Analyzer
                     {
                         var (isSerializable, childrenType) = symbols.GetMemberInfo(member);
 
-                        metadata = new MemberMetadata(memberName, member.Kind);
-                        metadata.IsSerializable = isSerializable;
-                        
+                        metadata = new MemberMetadata(memberName, member.Kind)
+                        {
+                            IsSerializable = isSerializable
+                        };
+
                         if (childrenType != null)
                         {
                             (metadata.ChildrenType, var childArguments) = ParseTypeMetadata(childrenType, options);
@@ -181,7 +179,7 @@ namespace QueryByShape.Analyzer
             }
 
             var typeMembers = members.Values.Where(m => m.IsSerializable && m.Ignore is not true).ToArray();
-            var typeMetadata = new TypeMetadata(name, typeMembers.ToEquatableArray());
+            var typeMetadata = new TypeMetadata(name, [.. typeMembers]);
 
             var result = (typeMetadata, arguments);
             _typeCache[name] = result;
@@ -211,11 +209,7 @@ namespace QueryByShape.Analyzer
                     case AttributeNames.ARGUMENT when isMemberFromBase is false:
                         var (name, variableName) = attribute.GetConstructorArguments();
 
-                        if (arguments.ContainsKey(name))
-                        {
-                            _diagnostics.Add(DuplicateArgumentDiagnostic.Create(name, attribute.GetLocation()));
-                        }
-                        else
+                        if (arguments.ContainsKey(name) == false)
                         {
                             var argMetadata = new ArgumentMetadata(name, variableName, attribute.ApplicationSyntaxReference);
                             arguments.Add(name, argMetadata);
@@ -230,7 +224,7 @@ namespace QueryByShape.Analyzer
 
             if (isMemberFromBase is false)
             {
-                metadata.Arguments = arguments.Values.ToEquatableArray();
+                metadata.Arguments = [.. arguments.Values];
             }
         }
     }

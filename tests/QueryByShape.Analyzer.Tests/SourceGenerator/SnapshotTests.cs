@@ -1,8 +1,7 @@
 ﻿using VerifyXunit;
 using Xunit;
-using QueryByShape;
 
-namespace QueryByShape.Analyzer.Tests;
+namespace QueryByShape.Analyzer.Tests.SourceGenerator;
 
 public class SnapshotTests
 {
@@ -414,7 +413,8 @@ public class SnapshotTests
     }
 
     [Fact]
-    public Task GeneratesMultipleQueriesWithDifferentOptions() {
+    public Task GeneratesMultipleQueriesWithDifferentOptions()
+    {
         var source = @"
             using QueryByShape;
             using System.Collections.Generic;

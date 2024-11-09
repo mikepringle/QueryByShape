@@ -1,7 +1,10 @@
 ﻿using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 using System;
+using System.Diagnostics;
 using System.Linq;
 using System.Text.Json.Serialization;
+using System.Xml.Linq;
 
 namespace QueryByShape.Analyzer
 {
@@ -13,6 +16,25 @@ namespace QueryByShape.Analyzer
             return $"{attributeClass.GetNamespace()}.{attributeClass.Name}";    
         }
 
+        public static string ExtractName(this NameSyntax nameSyntax)
+        {
+            return nameSyntax switch
+            {
+                SimpleNameSyntax ins => ins.Identifier.Text,
+                QualifiedNameSyntax qns => qns.Right.Identifier.Text,
+                _ => throw new NotSupportedException()
+            };
+        }
+
+        public static AttributeData? GetAttributeData(this AttributeSyntax syntax, ISymbol parentSymbol)
+        {
+            var parentAttributes = parentSymbol.GetAttributes();
+            var syntaxRef = syntax.SyntaxTree;
+            var syntaxSpan = syntax.Span;
+
+            return parentAttributes.FirstOrDefault(a => a.ApplicationSyntaxReference?.SyntaxTree == syntaxRef && a.ApplicationSyntaxReference?.Span == syntaxSpan);
+        }
+
         public static Location GetLocation(this SyntaxReference? reference)
         {
             return reference?.SyntaxTree.GetLocation(reference.Span) ?? Location.None;
@@ -21,6 +43,11 @@ namespace QueryByShape.Analyzer
         public static Location GetLocation(this AttributeData attribute)
         {
             return attribute.ApplicationSyntaxReference?.GetLocation() ?? Location.None;
+        }
+
+        public static INamedTypeSymbol ResolveNamedType<T>(this Compilation compilation)
+        {
+            return compilation.GetTypeByMetadataName(typeof(T).FullName)!;
         }
 
         public static string GetConstructorArgument(this AttributeData attribute) => GetConstructorArguments(attribute)[0];
@@ -34,7 +61,7 @@ namespace QueryByShape.Analyzer
             
             if (arguments.Any())
             {
-                value = (T)arguments.First().Value.Value; 
+                value = (T?)arguments.First().Value.Value; 
                 return true;
             }
 
@@ -45,7 +72,7 @@ namespace QueryByShape.Analyzer
         {
             return string.Join(".", GetNamespace_Internal(symbol.ContainingNamespace));
             
-            string[] GetNamespace_Internal(INamespaceSymbol symbol, int index = 0)
+            static string[] GetNamespace_Internal(INamespaceSymbol symbol, int index = 0)
             {
                 if (symbol.ContainingNamespace == null) 
                 {
@@ -58,41 +85,71 @@ namespace QueryByShape.Analyzer
             }
         }
 
-        public static bool IsImplementing(this INamedTypeSymbol type, INamedTypeSymbol from)
+        public static bool TryGetCompatibleGenericBaseType(this ITypeSymbol type, INamedTypeSymbol? baseType, out INamedTypeSymbol? result)
         {
-            return type.IsGenericType && type.ConstructedFrom.Equals(from, SymbolEqualityComparer.Default);
+            result = null;
+
+            if (baseType is null)
+            {
+                return false;
+            }
+
+            if (baseType.TypeKind is TypeKind.Interface)
+            {
+                foreach (INamedTypeSymbol interfaceType in type.AllInterfaces)
+                {
+                    if (IsMatchingGenericType(interfaceType, baseType))
+                    {
+                        result = interfaceType;
+                        return true;
+                    }
+                }
+            }
+
+            for (INamedTypeSymbol? current = type as INamedTypeSymbol; current != null; current = current.BaseType)
+            {
+                if (IsMatchingGenericType(current, baseType))
+                {
+                    result = current;
+                    return true;
+                }
+            }
+
+            return false;
+
+            static bool IsMatchingGenericType(INamedTypeSymbol candidate, INamedTypeSymbol baseType)
+            {
+                return candidate.IsGenericType && SymbolEqualityComparer.Default.Equals(candidate.ConstructedFrom, baseType);
+            }
         }
 
-        public static bool IsAssignableTo(this INamedTypeSymbol type, INamedTypeSymbol to)
+
+        public static bool IsAssignableFrom(this ITypeSymbol? baseType, ITypeSymbol? type)
         {
-            if (to.TypeKind == TypeKind.Interface)
+            if (baseType is null || type is null)
             {
-                return type.IsImplementing(to) || type.BaseType?.AllInterfaces.Any(a => a.IsImplementing(to)) == true;
+                return false;
             }
-            else
+
+            if (baseType.TypeKind is TypeKind.Interface)
             {
-                if (type.Equals(to, SymbolEqualityComparer.Default))
+                if (type.AllInterfaces.Contains(baseType, SymbolEqualityComparer.Default))
                 {
                     return true;
                 }
-
-                var baseType = to.BaseType;
-
-
-                while (baseType is not null)
-                {
-                    if (type.Equals(baseType, SymbolEqualityComparer.Default))
-                    {
-                        return true;
-                    }
-
-                    baseType = baseType.BaseType;
-                }
-
-                return false;
             }
+
+            for (INamedTypeSymbol? current = type as INamedTypeSymbol; current != null; current = current.BaseType)
+            {
+                if (SymbolEqualityComparer.Default.Equals(baseType, current))
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
-    
+
         public static Location ToTrimmedLocation(this Location location) => Location.Create(location.SourceTree!.FilePath, location.SourceSpan, location.GetLineSpan().Span);
     }
 }
