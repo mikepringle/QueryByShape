@@ -19,6 +19,7 @@ StarWarsFilms films = filmsResponse?.Data;
 - Variables
 - Arguments
 - Aliasing
+- Inline Fragments
 - JsonIgore (System.Text.Json)
 - JsonPropertyName (System.Text.Json)
 
@@ -34,7 +35,7 @@ This project is currently in beta you will need to [enable prerelease packages](
 - Dictionaries are not supprted
 
 ## Example Queries
-All samples are written for the [Star Wars GraphQL API](https://studio.apollographql.com/public/star-wars-swapi)
+Most samples are written for the [Star Wars GraphQL API](https://studio.apollographql.com/public/star-wars-swapi)
 
 ---
 #### Query Options - C#
@@ -148,6 +149,46 @@ query ExampleQuery ($newHopeId: ID!, $empireId: ID!) {
 
 ```
 ---
+#### Inline Fragments - C# (not from SWAPI)
+``` C# 
+using QueryByShape;
+using System.Collections.Generic;
+
+namespace StarWars
+{
+    [Query]
+    [Variable("$ep")]
+    public partial class InlineFragmentQuery : IGeneratedQuery
+    {
+        [Argument("episode", "$ep")]
+        public HeroModel Hero { get; set; }
+    }
+
+    public class HeroModel
+    {
+        [On("Droid")]
+        public string PrimaryFunction { get; set; }
+
+        [On("Human")]
+        public string height { get; set; }
+
+    }
+}
+```
+#### GraphQL Output
+``` GraphQL
+query InlineFragment($ep: Episode!) {
+  hero(episode: $ep) {
+    name
+    ... on Droid {
+      primaryFunction
+    }
+    ... on Human {
+      height
+    }
+  }
+} 
+```
 #### Supported System.Text.Json Attributes - C#
 ``` C# 
 using QueryByShape;

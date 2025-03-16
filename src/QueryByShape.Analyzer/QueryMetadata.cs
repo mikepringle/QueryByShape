@@ -42,6 +42,8 @@ namespace QueryByShape.Analyzer
 
         public EquatableArray<ArgumentMetadata>? Arguments { get; set; }
 
+        public EquatableArray<string>? On { get; set; }
+
         public TypeMetadata? ChildrenType { get; set; }
     }
 

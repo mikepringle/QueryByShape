@@ -515,8 +515,37 @@ public class SnapshotTests
         ";
 
         return TestHelper.VerifySnapshot(source);
-
-
-
     }
+
+    [Fact]
+    public Task GeneratesFragment()
+    {
+        // The source code to test
+        var source = @"
+            using QueryByShape;
+            using System.Collections.Generic;
+
+            namespace Tests
+            {
+                [Query]
+                public partial class NameQuery : IGeneratedQuery
+                {
+                    public List<Person> People { get; set; }
+                }
+
+                public class Person
+                {
+                    public string FirstName { get; set; }
+                    public string LastName { get; set; }
+                    public string MiddleName { get; set; }
+                    [On(""Employee"")]
+                    public string EmployeeId { get; set; }
+                }
+            }
+        ";
+
+        return TestHelper.VerifySnapshot(source);
+    }
+
+
 }

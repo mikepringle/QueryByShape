@@ -49,32 +49,6 @@ namespace QueryByShape.Analyzer
             return _compilation.GetTypeByMetadataName(name)!;
         }
 
-
-
-
-        public (bool isSerializable, INamedTypeSymbol? childType) GetMemberInfo(ISymbol member)
-        {
-            if (TryGetSerializableInfo(member, out var memberType) == false)
-            {
-                return (false, null);
-            }
-            
-            TryGetChildrenType(memberType!, out var childrenType);
-            return (true, childrenType);
-        }
-
-        public bool TryGetSerializableInfo(ISymbol member, out INamedTypeSymbol? symbol)
-        {
-            symbol = member switch
-            {
-                IPropertySymbol property when IsPropertySerializable(property) => property.Type,
-                IFieldSymbol field when IsFieldSerializable(field) => field.Type,
-                _ => null
-            } as INamedTypeSymbol;
-
-            return symbol != null;
-        }
-
         public bool IsPropertySerializable(IPropertySymbol property)
         {
             return (
@@ -109,7 +83,7 @@ namespace QueryByShape.Analyzer
             ) is false;
         }
 
-        private bool TryGetChildrenType(ITypeSymbol type, out INamedTypeSymbol? childrenType)
+        public bool TryGetChildrenType(ITypeSymbol type, out INamedTypeSymbol? childrenType)
         {
             childrenType = null;
             ITypeSymbol? effectiveType = null;

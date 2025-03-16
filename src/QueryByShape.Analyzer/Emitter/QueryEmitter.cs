@@ -3,6 +3,7 @@ using Microsoft.CodeAnalysis.Text;
 using QueryByShape.Analyzer.Diagnostics;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 
@@ -51,16 +52,38 @@ namespace QueryByShape.Analyzer
 
         private void EmitType(TypeMetadata typeMetadata, QueryOptions options, int depth)
         {
-            var members = typeMetadata.Members;
-            
-            if (members is null)
+            if (typeMetadata.Members is null)
             {
                 return;
             }
 
-            var filtered = options.IncludeFields == false ? members.Value.Where(m => m.Kind == SymbolKind.Property) : members.Value;
+            var (members, fragmentMembers) = typeMetadata.Members.Value.Partition(m => m.On?.Count is not > 0);
 
             _sb.AppendLine("{");
+
+            EmitMembers(members, options, depth);
+
+            if (fragmentMembers.Count > 0)
+            {
+                var fragments = fragmentMembers
+                                    .SelectMany(m => m.On!.Value, (m, o) => (fragment: o, member: m))
+                                    .GroupBy(m => m.fragment, m => m.member);
+
+                foreach (var fragment in fragments)
+                {
+                    _sb.AppendLine($"... on {fragment.Key} {{", depth);
+                    EmitMembers(fragment, options, depth + 1);
+                    _sb.AppendLine("}", depth);
+                }
+            }
+
+            _sb.AppendLine("}", depth - 1);
+        }
+
+        private void EmitMembers(IEnumerable<MemberMetadata> members, QueryOptions options, int depth)
+        {
+            var filtered = options.IncludeFields == false ? members.Where(m => m.Kind == SymbolKind.Property) : members;
+
             foreach (var member in filtered)
             {
                 _sb.AppendIndent(depth);
@@ -73,7 +96,7 @@ namespace QueryByShape.Analyzer
                 }
 
                 EmitParameters(member.Arguments?.Select(a => $"{a.Name}:{a.VariableName}"));
-                    
+                
                 if (member.ChildrenType?.Members?.Count > 0)
                 {
                     EmitType(member.ChildrenType, options, depth + 1);
@@ -83,7 +106,6 @@ namespace QueryByShape.Analyzer
                     _sb.AppendLine(string.Empty);
                 }
             }
-            _sb.AppendLine("}", depth - 1);
         }
 
         internal void EmitParameters(IEnumerable<string>? items)
