@@ -24,8 +24,7 @@ StarWarsFilms films = filmsResponse?.Data;
 - JsonPropertyName (System.Text.Json)
 
 ## Installation
-This project is currently in beta you will need to [enable prerelease packages](https://learn.microsoft.com/en-us/nuget/create-packages/prerelease-packages) in UI or cli    
-`dotnet add package QueryByShape.GraphQLClient --prerelease `  
+`dotnet add package QueryByShape.GraphQLClient`  
 
 ## Limitations
 - Requires .NET 8 or higher
