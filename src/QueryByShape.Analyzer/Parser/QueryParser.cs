@@ -8,6 +8,7 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.ComponentModel;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Text.Json.Serialization;
 using System.Threading;
 
@@ -41,14 +42,13 @@ namespace QueryByShape.Analyzer
 
         public ParseResult Parse(TypeDeclarationSyntax typeDeclaration, INamedTypeSymbol declaredSymbol)
         {
-            var query = new QueryMetadata(declaredSymbol.Name, declaredSymbol.GetNamespace());
-            
             if (typeDeclaration.Modifiers.Any(m => m.IsKind(SyntaxKind.PartialKeyword)) is false) 
             {
                 //_diagnostics.Add(QueryMustBePartialDiagnostic.Create(declaredSymbol.Name, typeDeclaration.GetLocation()));
             }
 
-            (query.Type, var queryArguments) = ParseTypeMetadata(declaredSymbol, query.Options);
+            var query = new QueryMetadata(declaredSymbol.Name, declaredSymbol.GetNamespace());
+            query.Type = ParseTypeMetadata(declaredSymbol, query.Options, out var queryArguments);
             UpdateQueryFromAttributes(query, declaredSymbol.GetAttributes());
             ValidateVariables(query.Variables, queryArguments);
             
@@ -124,72 +124,115 @@ namespace QueryByShape.Analyzer
             query.Variables = [.. variables.Values];
         }
 
-        private (TypeMetadata, List<ArgumentMetadata>) ParseTypeMetadata(INamedTypeSymbol type, QueryOptions options)
+        private TypeMetadata ParseTypeMetadata(INamedTypeSymbol type, QueryOptions options, out List<ArgumentMetadata> childArguments)
         {
-            var fromBaseType = false;
             INamedTypeSymbol? current = type;
             var name = type.ToDisplayString();
             
             if (_typeCache.ContainsKey(name))
             {
-                return _typeCache[name];
+                (var metadata, childArguments) = _typeCache[name];
+                return metadata;
             }
 
             Dictionary<string, MemberMetadata> members = [];
-            List<ArgumentMetadata> arguments = [];
+            childArguments = [];
 
             while (current?.Name is not null or "Object" or "ValueType")
             {
                 foreach (var member in current.GetMembers())
                 {
                     var memberName = member.Name;
-
-                    if (!members.TryGetValue(memberName, out var metadata))
+                    var attributes = member.GetAttributes();
+                    
+                    if (members.TryGetValue(memberName, out var metadata) is false)
                     {
-                        var (isSerializable, childrenType) = symbols.GetMemberInfo(member);
-
-                        metadata = new MemberMetadata(memberName, member.Kind)
-                        {
-                            IsSerializable = isSerializable
-                        };
-
-                        if (childrenType != null)
-                        {
-                            (metadata.ChildrenType, var childArguments) = ParseTypeMetadata(childrenType, options);
-                            arguments.AddRange(childArguments);
-
-                        }
-
+                        metadata = ParseMemberMetadata(member, out var memberType);
                         members[memberName] = metadata;
-                    }
 
-                    if (metadata.IsSerializable)
-                    {
-                        UpdateMemberFromAttributes(metadata, member.GetAttributes(), fromBaseType);
-                        
-                        if (fromBaseType is false && metadata.Arguments is not null)
+                        if (metadata.IsSerializable is false)
                         {
-                            arguments.AddRange(metadata.Arguments);
+                            continue;
+                        }
+
+                        if (symbols.TryGetChildrenType(memberType!, out var childrenType))
+                        {
+                            metadata.ChildrenType = ParseTypeMetadata(childrenType!, options, out var innerChildArguments);
+                            childArguments.AddRange(innerChildArguments);
+                        }
+
+                        UpdateMemberFromBaseAttributes(metadata, attributes);
+                        
+                        if (metadata.Arguments?.Count > 0)
+                        {
+                            childArguments.AddRange(metadata.Arguments);
                         }
                     }
+
+                    UpdateMemberFromInheritedAttributes(metadata, attributes);
                 }
 
-                fromBaseType = true;
                 current = current.BaseType;
             }
 
             var typeMembers = members.Values.Where(m => m.IsSerializable && m.Ignore is not true).ToArray();
             var typeMetadata = new TypeMetadata(name, [.. typeMembers]);
 
-            var result = (typeMetadata, arguments);
-            _typeCache[name] = result;
-            return result;
+            _typeCache[name] = (typeMetadata, childArguments);
+            return typeMetadata;
         }
 
-        private void UpdateMemberFromAttributes(MemberMetadata metadata, ImmutableArray<AttributeData> attributes, bool isMemberFromBase)
+        private MemberMetadata ParseMemberMetadata(ISymbol member, out INamedTypeSymbol? memberType)
+        {
+            memberType = member switch
+            {
+                IPropertySymbol property when symbols.IsPropertySerializable(property) => property.Type,
+                IFieldSymbol field when symbols.IsFieldSerializable(field) => field.Type,
+                _ => null
+            } as INamedTypeSymbol;
+
+            return new MemberMetadata(member.Name, member.Kind)
+            {
+                IsSerializable = memberType != null && symbols.IsTypeSerializable(memberType)
+            };
+        }
+
+        private void UpdateMemberFromBaseAttributes(MemberMetadata metadata, ImmutableArray<AttributeData> attributes)
         {
             var arguments = new Dictionary<string, ArgumentMetadata>();
-            
+            var inlineFragments = new HashSet<string>();
+
+            foreach (var attribute in attributes)
+            {
+                switch (attribute.ToFullName())
+                {
+                    case AttributeNames.ARGUMENT:
+                        var (name, variableName) = attribute.GetConstructorArguments();
+
+                        if (arguments.ContainsKey(name) == false)
+                        {
+                            var argMetadata = new ArgumentMetadata(name, variableName, attribute.ApplicationSyntaxReference);
+                            arguments.Add(name, argMetadata);
+                        }
+                        break;
+
+                    case AttributeNames.ALIAS_OF:
+                        metadata.AliasOf = attribute.GetConstructorArgument();
+                        break;
+
+                    case AttributeNames.ON:
+                        inlineFragments.Add(attribute.GetConstructorArgument());
+                        break;
+                        
+                }
+            }
+
+            metadata.Arguments = [.. arguments.Values];
+            metadata.On = [.. inlineFragments];
+        }
+
+        private void UpdateMemberFromInheritedAttributes(MemberMetadata metadata, ImmutableArray<AttributeData> attributes)
+        {
             foreach (var attribute in attributes)
             {
                 switch (attribute.ToFullName())
@@ -200,31 +243,12 @@ namespace QueryByShape.Analyzer
 
                     case AttributeNames.JSON_IGNORE when metadata.Ignore is null:
                         var ignoreCondition = attribute.TryGetNamedArgument<int>(nameof(JsonIgnoreAttribute.Condition), out var condition)
-                            ? (JsonIgnoreCondition) condition
+                            ? (JsonIgnoreCondition)condition
                             : JsonIgnoreCondition.Always;
 
                         metadata.Ignore = ignoreCondition is not JsonIgnoreCondition.Never;
                         break;
-
-                    case AttributeNames.ARGUMENT when isMemberFromBase is false:
-                        var (name, variableName) = attribute.GetConstructorArguments();
-
-                        if (arguments.ContainsKey(name) == false)
-                        {
-                            var argMetadata = new ArgumentMetadata(name, variableName, attribute.ApplicationSyntaxReference);
-                            arguments.Add(name, argMetadata);
-                        }
-                        break;
-
-                    case AttributeNames.ALIAS_OF when isMemberFromBase is false:
-                        metadata.AliasOf = attribute.GetConstructorArgument();
-                        break;
                 }
-            }
-
-            if (isMemberFromBase is false)
-            {
-                metadata.Arguments = [.. arguments.Values];
             }
         }
     }

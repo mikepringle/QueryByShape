@@ -8,5 +8,6 @@
         public const string VARIABLE = $"QueryByShape.{nameof(VariableAttribute)}";
         public const string ARGUMENT = $"QueryByShape.{nameof(ArgumentAttribute)}";
         public const string ALIAS_OF = $"QueryByShape.{nameof(AliasOfAttribute)}";
+        public const string ON = $"QueryByShape.{nameof(OnAttribute)}";
     }
 }

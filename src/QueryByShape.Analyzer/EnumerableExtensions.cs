@@ -19,5 +19,27 @@ namespace QueryByShape.Analyzer
             (first, second) = list;
             third = list.Count > 2 ? list[2] : throw new IndexOutOfRangeException();
         }
+
+        public static (List<T>, List<T>) Partition<T>(this IEnumerable<T> source, Func<T, bool?> predicate)
+        {
+            var left = new List<T>();
+            var right = new List<T>();
+
+            foreach (var item in source)
+            {
+                var result = predicate(item);
+                
+                if (predicate(item) is true)
+                {
+                    left.Add(item);
+                }
+                else
+                {
+                    right.Add(item);
+                }
+            }
+
+            return (left, right);
+        }
     }
 }
