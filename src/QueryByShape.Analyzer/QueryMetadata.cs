@@ -15,15 +15,13 @@ namespace QueryByShape.Analyzer
 
     internal record DiagnosticMetadata(DiagnosticDescriptor Descriptor, Location Location, EquatableArray<string>? MessageArguments = null);
 
-    internal record QueryMetadata(string TypeName, string NamespaceName)
+    internal record QueryMetadata(string TypeName, string NamespaceName, TypeMetadata Type)
     {
         public string? Name { get; set; }
 
         public string TypeFullName { get; } = $"{NamespaceName}.{TypeName}";
 
         public EquatableArray<VariableMetadata>? Variables { get; set; }
-
-        public TypeMetadata? Type { get; set; }
 
         public QueryOptions Options { get; set; } = new QueryOptions();
     }

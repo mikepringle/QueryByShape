@@ -1,31 +1,41 @@
-﻿using System.Text;
+﻿using System;
+using System.Text;
+using static System.Net.Mime.MediaTypeNames;
 
 namespace QueryByShape.Analyzer
 {
     internal class SourceBuilder(SourceFormatting formatting)
     {
-        private StringBuilder sb = new StringBuilder();
-
-        public void Append(string text) 
+        private readonly StringBuilder sb = new StringBuilder();
+        private int depth = 0;
+        
+        internal void AppendStartBlock()
         {
-            sb.Append(text);
+            sb.Append(" {");
+            depth++;
         }
 
-        public void AppendLine(string text, int depth = 0)
+        internal void AppendEndBlock()
         {
-            AppendIndent(depth);
-            
+            depth--;
+            AppendLine();
+            sb.Append("}");
+        }
+        
+        internal void AppendLine()
+        {
             if (formatting == SourceFormatting.Minified)
             {
-                sb.Append(text);
+                sb.Append(" ");
             }
             else
             {
-                sb.AppendLine(text);
+                sb.AppendLine();
+                AppendIndent();
             }
         }
 
-        public void AppendIndent(int depth)
+        internal void AppendIndent()
         {
             if (formatting == SourceFormatting.Minified)
             {
@@ -33,10 +43,28 @@ namespace QueryByShape.Analyzer
             }
             else if (depth > 0)
             {
-                sb.Append(' ', depth * 4); 
+                sb.Append(' ', depth * 4);
             }
+        }
+
+        internal void Append(string text)
+        {
+            sb.Append(text);
+        }
+
+        internal void AppendParentheses(string[]? values)
+        {
+            if (values == null || values.Length == 0)
+            {
+                return;
+            }
+
+            sb.Append("(");
+            sb.AppendJoin(",", values);
+            sb.Append(")");
         }
 
         public override string ToString() => sb.ToString();
     }
+
 }

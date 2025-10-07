@@ -47,8 +47,10 @@ namespace QueryByShape.Analyzer
                 //_diagnostics.Add(QueryMustBePartialDiagnostic.Create(declaredSymbol.Name, typeDeclaration.GetLocation()));
             }
 
-            var query = new QueryMetadata(declaredSymbol.Name, declaredSymbol.GetNamespace());
-            query.Type = ParseTypeMetadata(declaredSymbol, query.Options, out var queryArguments);
+            var types = ParseTypeMetadata(declaredSymbol, out var queryArguments);
+            
+            var query = new QueryMetadata(declaredSymbol.Name, declaredSymbol.GetNamespace(), types);
+
             UpdateQueryFromAttributes(query, declaredSymbol.GetAttributes());
             ValidateVariables(query.Variables, queryArguments);
             
@@ -124,7 +126,7 @@ namespace QueryByShape.Analyzer
             query.Variables = [.. variables.Values];
         }
 
-        private TypeMetadata ParseTypeMetadata(INamedTypeSymbol type, QueryOptions options, out List<ArgumentMetadata> childArguments)
+        private TypeMetadata ParseTypeMetadata(INamedTypeSymbol type, out List<ArgumentMetadata> childArguments)
         {
             INamedTypeSymbol? current = type;
             var name = type.ToDisplayString();
@@ -157,7 +159,7 @@ namespace QueryByShape.Analyzer
 
                         if (symbols.TryGetChildrenType(memberType!, out var childrenType))
                         {
-                            metadata.ChildrenType = ParseTypeMetadata(childrenType!, options, out var innerChildArguments);
+                            metadata.ChildrenType = ParseTypeMetadata(childrenType!, out var innerChildArguments);
                             childArguments.AddRange(innerChildArguments);
                         }
 

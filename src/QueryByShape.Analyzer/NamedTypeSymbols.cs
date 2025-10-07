@@ -1,54 +1,30 @@
 ﻿using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.Editing;
-using System;
 using System.Collections.Generic;
 using System.Reflection;
 
 namespace QueryByShape.Analyzer
 {
-    public struct LazySymbol(Func<INamedTypeSymbol> creator)
+    public class NamedTypeSymbols(Compilation compilation)
     {
-        private INamedTypeSymbol? _value = null;
-        public INamedTypeSymbol Value => _value ?? (_value = creator());
-    }
-    public class NamedTypeSymbols
-    {
-        private readonly Compilation _compilation;
+        public INamedTypeSymbol Delegate => _delegate ??= compilation.GetSpecialType(SpecialType.System_Delegate);
+        private INamedTypeSymbol? _delegate;
 
-        public NamedTypeSymbols(Compilation compilation)
-        {
-            _compilation = compilation;
-            _delegate = new (() => ResolveNamedType(typeof(Delegate).FullName));
-            _iEnumerableOfT = new(() => ResolveNamedType(typeof(IEnumerable<>).FullName));
-            _iDictionaryOfKV = new (() => ResolveNamedType(typeof(IDictionary<,>).FullName));
-            _intPtr = new (() => ResolveNamedType(typeof(IntPtr).FullName));
-            _memberInfo = new (() => ResolveNamedType(typeof(MemberInfo).FullName));
-            _uIntPtr = new (() => ResolveNamedType(typeof(UIntPtr).FullName));
-        }
+        public INamedTypeSymbol IEnumerableOfT => _iEnumerableOfT ??= compilation.GetSpecialType(SpecialType.System_Collections_Generic_IEnumerable_T);
+        private INamedTypeSymbol? _iEnumerableOfT;
 
-        public INamedTypeSymbol Delegate => _delegate.Value;
-        private readonly LazySymbol _delegate;
+        public INamedTypeSymbol IDictionaryOfKV => _iDictionaryOfKV ??= compilation.GetTypeByMetadataName(typeof(IDictionary<,>).FullName)!;
+        private INamedTypeSymbol? _iDictionaryOfKV;
 
-        public INamedTypeSymbol IEnumerableOfT => _iEnumerableOfT.Value;
-        private readonly LazySymbol _iEnumerableOfT;
+        public INamedTypeSymbol IntPtr => _intPtr ??= compilation.GetSpecialType(SpecialType.System_IntPtr);
+        private INamedTypeSymbol? _intPtr;
 
-        public INamedTypeSymbol IDictionaryOfKV => _iDictionaryOfKV.Value;
-        private readonly LazySymbol _iDictionaryOfKV;
+        public INamedTypeSymbol MemberInfo => _memberInfo ??= compilation.GetTypeByMetadataName(typeof(MemberInfo).FullName)!;
+        private INamedTypeSymbol? _memberInfo;
 
-        public INamedTypeSymbol IntPtr => _intPtr.Value;
-        private readonly LazySymbol _intPtr;
+        public INamedTypeSymbol UIntPtr => _uIntPtr ??= compilation.GetSpecialType(SpecialType.System_UIntPtr);
+        private INamedTypeSymbol? _uIntPtr;
 
-        public INamedTypeSymbol MemberInfo => _memberInfo.Value;
-        private readonly LazySymbol _memberInfo;
-
-        public INamedTypeSymbol UIntPtr => _uIntPtr.Value;
-        private readonly LazySymbol _uIntPtr;
-
-        private INamedTypeSymbol ResolveNamedType(string name)
-        {
-            return _compilation.GetTypeByMetadataName(name)!;
-        }
-
+    
         public bool IsPropertySerializable(IPropertySymbol property)
         {
             return (
