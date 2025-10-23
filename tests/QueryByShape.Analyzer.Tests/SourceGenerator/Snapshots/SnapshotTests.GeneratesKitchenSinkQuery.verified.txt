@@ -9,6 +9,6 @@ namespace Tests
 {
     public partial class NameQuery
     {
-        public static string ToGraphQLQuery() => @"query renamed($id:UUID!) { people(id:$id) { id:identity  firstName  lastName  addressLine1  city  state  zip  } }";                 
+        public static string ToGraphQLQuery() => @"query renamed($id:UUID!) { people(id:$id) { id:identity firstName lastName addressLine1 city state zip } }";                 
     }
 }
