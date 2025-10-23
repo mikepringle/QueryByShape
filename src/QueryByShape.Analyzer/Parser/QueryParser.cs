@@ -17,7 +17,7 @@ namespace QueryByShape.Analyzer
     internal class QueryParser(NamedTypeSymbols symbols)
     {
         private readonly List<DiagnosticMetadata> _diagnostics = [];
-        private readonly Dictionary<string, (TypeMetadata, List<ArgumentMetadata>)> _typeCache = [];
+        private readonly Dictionary<INamedTypeSymbol, (TypeMetadata, List<ArgumentMetadata>)> _typeCache = new(SymbolEqualityComparer.Default);
 
         public static EquatableArray<ParseResult> Process(ImmutableArray<(TypeDeclarationSyntax declaration, SemanticModel semanticModel)> contexts, NamedTypeSymbols symbols, CancellationToken cancellationToken)
         {
@@ -26,10 +26,7 @@ namespace QueryByShape.Analyzer
 
             for (int i = 0; i < contexts.Length; i++)
             {
-                if (cancellationToken.IsCancellationRequested)
-                {
-                    throw new OperationCanceledException();
-                }
+                cancellationToken.ThrowIfCancellationRequested();
 
                 var (declaration, semanticModel) = contexts[i];
                 var declaredSymbol = semanticModel.GetDeclaredSymbol(declaration)!;
@@ -47,7 +44,7 @@ namespace QueryByShape.Analyzer
                 //_diagnostics.Add(QueryMustBePartialDiagnostic.Create(declaredSymbol.Name, typeDeclaration.GetLocation()));
             }
 
-            var types = ParseTypeMetadata(declaredSymbol, out var queryArguments);
+            var (types, queryArguments) = ParseTypeMetadata(declaredSymbol);
             
             var query = new QueryMetadata(declaredSymbol.Name, declaredSymbol.GetNamespace(), types);
 
@@ -59,31 +56,41 @@ namespace QueryByShape.Analyzer
 
         public void ValidateVariables(IEnumerable<VariableMetadata>? variables, IList<ArgumentMetadata> arguments)
         {
-            var variableLookup = variables?.ToDictionary(v => v.Name) ?? [];
-            var variableUsage = variableLookup.Keys.ToHashSet();
+            // Nothing to validate
+            if (variables?.Any() != true && arguments.Count == 0)
+            {
+                return;
+            }
+
+            var variableLookup = variables?.ToDictionary(v => v.Name, StringComparer.Ordinal) ?? new Dictionary<string, VariableMetadata>(StringComparer.Ordinal);
+            var unusedVariables = new HashSet<string>(variableLookup.Keys, StringComparer.Ordinal);
 
             foreach (var argument in arguments)
             {
-                if (variableLookup.ContainsKey(argument.VariableName) is false)
+                var varName = argument.VariableName;
+
+                if (variableLookup.TryGetValue(varName, out var variable) is false)
                 {
-                    _diagnostics.Add(MissingVariableDiagnostic.CreateMetadata(argument.Name, argument.VariableName, argument.Reference.GetLocation()));
+                    _diagnostics.Add(MissingVariableDiagnostic.CreateMetadata(argument.Name, varName, argument.Reference.GetLocation()));
+                    continue;
                 }
-                else if (variableUsage.Contains(argument.VariableName))
-                {
-                    variableUsage.Remove(argument.VariableName);
-                }
+
+                // Mark as used
+                unusedVariables.Remove(varName);
             }
 
-            foreach (var variableName in variableUsage)
+            // Any remaining variables were not used by any argument
+            foreach (var variableName in unusedVariables)
             {
-                _diagnostics.Add(UnusedVariableDiagnostic.CreateMetadata(variableName, variableLookup[variableName].Reference.GetLocation()));
+                var variable = variableLookup[variableName];
+                _diagnostics.Add(UnusedVariableDiagnostic.CreateMetadata(variableName, variable.Reference.GetLocation()));
             }
         }
 
 
         private void UpdateQueryFromAttributes(QueryMetadata query, ImmutableArray<AttributeData> attributes)
         {
-            Dictionary<string, VariableMetadata> variables = [];
+            Dictionary<string, VariableMetadata> variables = new(StringComparer.Ordinal);
 
             foreach (var attribute in attributes)
             {
@@ -97,14 +104,14 @@ namespace QueryByShape.Analyzer
                                 case nameof(QueryAttribute.OperationName):
                                     query.Name = (string)argument.Value.Value!;
                                     break;
-                                case nameof(QueryAttribute.IncludeFields):
-                                    query.Options.IncludeFields = bool.Parse(argument.Value.Value!.ToString());
+                                case nameof(QueryAttribute.IncludeFields) when argument.Value.Value is bool includeFields:
+                                    query.Options.IncludeFields = includeFields;
                                     break;
-                                case nameof(QueryAttribute.PropertyNamingPolicy):
-                                    query.Options.PropertyNamingPolicy = (JsonPropertyNaming)Enum.Parse(typeof(JsonPropertyNaming), argument.Value.Value!.ToString());
+                                case nameof(QueryAttribute.PropertyNamingPolicy) when argument.Value.Value is JsonPropertyNaming jsonPropertyNaming:
+                                    query.Options.PropertyNamingPolicy =jsonPropertyNaming;
                                     break;
-                                case nameof(QueryAttribute.Formatting):
-                                    query.Options.Formatting = (SourceFormatting)Enum.Parse(typeof(SourceFormatting), argument.Value.Value!.ToString());
+                                case nameof(QueryAttribute.Formatting) when argument.Value.Value is SourceFormatting sourceFormatting:
+                                    query.Options.Formatting = sourceFormatting;
                                     break;
                             }
                         }
@@ -126,19 +133,17 @@ namespace QueryByShape.Analyzer
             query.Variables = [.. variables.Values];
         }
 
-        private TypeMetadata ParseTypeMetadata(INamedTypeSymbol type, out List<ArgumentMetadata> childArguments)
+        private (TypeMetadata, List<ArgumentMetadata>) ParseTypeMetadata(INamedTypeSymbol type)
         {
-            INamedTypeSymbol? current = type;
-            var name = type.ToDisplayString();
-            
-            if (_typeCache.ContainsKey(name))
+            if (_typeCache.ContainsKey(type))
             {
-                (var metadata, childArguments) = _typeCache[name];
-                return metadata;
+                return _typeCache[type];
             }
 
-            Dictionary<string, MemberMetadata> members = [];
-            childArguments = [];
+            INamedTypeSymbol? current = type;
+
+            Dictionary<string, MemberMetadata> members = new(StringComparer.Ordinal);
+            List<ArgumentMetadata> arguments = [];
 
             while (current?.Name is not null or "Object" or "ValueType")
             {
@@ -159,15 +164,16 @@ namespace QueryByShape.Analyzer
 
                         if (symbols.TryGetChildrenType(memberType!, out var childrenType))
                         {
-                            metadata.ChildrenType = ParseTypeMetadata(childrenType!, out var innerChildArguments);
-                            childArguments.AddRange(innerChildArguments);
+                            var (childMetadata, childArguments) = ParseTypeMetadata(childrenType!);
+                            metadata.ChildrenType = childMetadata;
+                            arguments.AddRange(childArguments);
                         }
 
                         UpdateMemberFromBaseAttributes(metadata, attributes);
                         
                         if (metadata.Arguments?.Count > 0)
                         {
-                            childArguments.AddRange(metadata.Arguments);
+                            arguments.AddRange(metadata.Arguments);
                         }
                     }
 
@@ -178,10 +184,11 @@ namespace QueryByShape.Analyzer
             }
 
             var typeMembers = members.Values.Where(m => m.IsSerializable && m.Ignore is not true).ToArray();
-            var typeMetadata = new TypeMetadata(name, [.. typeMembers]);
+            var typeMetadata = new TypeMetadata(type.ToDisplayString(), [.. typeMembers]);
 
-            _typeCache[name] = (typeMetadata, childArguments);
-            return typeMetadata;
+            var result = (typeMetadata, arguments);
+            _typeCache[type] = result;
+            return result;
         }
 
         private MemberMetadata ParseMemberMetadata(ISymbol member, out INamedTypeSymbol? memberType)
@@ -201,8 +208,8 @@ namespace QueryByShape.Analyzer
 
         private void UpdateMemberFromBaseAttributes(MemberMetadata metadata, ImmutableArray<AttributeData> attributes)
         {
-            var arguments = new Dictionary<string, ArgumentMetadata>();
-            var inlineFragments = new HashSet<string>();
+            Dictionary<string, ArgumentMetadata> arguments = new(StringComparer.Ordinal);
+            HashSet<string> inlineFragments = new(StringComparer.Ordinal);
 
             foreach (var attribute in attributes)
             {
