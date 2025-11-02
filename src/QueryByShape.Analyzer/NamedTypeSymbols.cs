@@ -1,6 +1,7 @@
 ﻿using Microsoft.CodeAnalysis;
 using System.Collections.Generic;
 using System.Reflection;
+using System.Text.Json.Serialization;
 
 namespace QueryByShape.Analyzer
 {
@@ -24,7 +25,31 @@ namespace QueryByShape.Analyzer
         public INamedTypeSymbol UIntPtr => _uIntPtr ??= compilation.GetSpecialType(SpecialType.System_UIntPtr);
         private INamedTypeSymbol? _uIntPtr;
 
-    
+        public INamedTypeSymbol QueryAttribute => _queryAttribute ??= compilation.GetTypeByMetadataName(typeof(QueryAttribute).FullName)!;
+        private INamedTypeSymbol? _queryAttribute;
+
+        public INamedTypeSymbol VariableAttribute => _variableAttribute ??= compilation.GetTypeByMetadataName(typeof(VariableAttribute).FullName)!;
+        private INamedTypeSymbol? _variableAttribute;
+
+        public INamedTypeSymbol ArgumentAttribute => _argumentAttribute ??= compilation.GetTypeByMetadataName(typeof(ArgumentAttribute).FullName)!;
+        private INamedTypeSymbol? _argumentAttribute;
+
+        public INamedTypeSymbol AliasOfAttribute => _aliasOfAttribute ??= compilation.GetTypeByMetadataName(typeof(AliasOfAttribute).FullName)!;
+        private INamedTypeSymbol? _aliasOfAttribute;
+
+        public INamedTypeSymbol OnAttribute => _onAttribute ??= compilation.GetTypeByMetadataName(typeof(OnAttribute).FullName)!;
+        private INamedTypeSymbol? _onAttribute;
+
+        public INamedTypeSymbol MutationAttribute => _mutationAttribute ??= compilation.GetTypeByMetadataName(typeof(MutationAttribute).FullName)!;
+        private INamedTypeSymbol? _mutationAttribute;
+
+        public INamedTypeSymbol JsonIgnoreAttribute => _jsonIgnoreAttribute ??= compilation.GetTypeByMetadataName(typeof(JsonIgnoreAttribute).FullName)!;
+        private INamedTypeSymbol? _jsonIgnoreAttribute;
+
+        public INamedTypeSymbol JsonPropertyAttribute => _jsonPropertyAttribute ??= compilation.GetTypeByMetadataName(typeof(JsonPropertyNameAttribute).FullName)!;
+        private INamedTypeSymbol? _jsonPropertyAttribute;
+
+
         public bool IsPropertySerializable(IPropertySymbol property)
         {
             return (

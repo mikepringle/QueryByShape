@@ -40,12 +40,12 @@ namespace QueryByShape.Analyzer.Analyzers
             var attributes = context.ContainingSymbol!.GetAttributes();
             var activeAttribute = attributes.Single(a => a.ApplicationSyntaxReference?.SyntaxTree == attributeSyntax.SyntaxTree && a.ApplicationSyntaxReference?.Span == attributeSyntax.Span);
 
-            if (activeAttribute.AttributeClass?.Equals(attributeNamedType, SymbolEqualityComparer.Default) != true)
+            if (activeAttribute.IsAttributeType(attributeNamedType) is false
+                 || activeAttribute.TryGetConstructorArgument(out string? activeName) is false)
             {
                 return;
             }
 
-            var activeName = activeAttribute.GetConstructorArgument();
             ReportInvalidName(activeName, context);
             ReportDuplicateNames(activeName, activeAttribute, attributeNamedType, attributes, context);
         }
@@ -73,7 +73,7 @@ namespace QueryByShape.Analyzer.Analyzers
 
         private static void ReportDuplicateNames(string name, AttributeData activeAttribute, INamedTypeSymbol attributeNamedType, ImmutableArray<AttributeData> attributes, SyntaxNodeAnalysisContext context)
         {
-            var dupes = attributes.Where(a => a.AttributeClass?.Equals(attributeNamedType, SymbolEqualityComparer.Default) == true && a.GetConstructorArgument() == name);
+            var dupes = attributes.Where(a => a.IsAttributeType(attributeNamedType) && a.TryGetConstructorArgument(out string? argument) && argument == name);
 
             if (dupes.First() != activeAttribute)
             { 

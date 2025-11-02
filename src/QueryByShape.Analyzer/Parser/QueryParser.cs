@@ -7,17 +7,24 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.ComponentModel;
+using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text.Json.Serialization;
 using System.Threading;
+using System.Xml.Linq;
 
 namespace QueryByShape.Analyzer
 {
     internal class QueryParser(NamedTypeSymbols symbols)
     {
-        private readonly List<DiagnosticMetadata> _diagnostics = [];
-        private readonly Dictionary<INamedTypeSymbol, (TypeMetadata, List<ArgumentMetadata>)> _typeCache = new(SymbolEqualityComparer.Default);
+        private static readonly SymbolEqualityComparer _symbolComparer = SymbolEqualityComparer.Default;
+        private static readonly StringComparer _stringComparer = StringComparer.Ordinal;
+
+        private readonly List<DiagnosticMetadata> _diagnostics = new();
+        private readonly Dictionary<INamedTypeSymbol, (TypeMetadata, List<ArgumentMetadata>)> _typeCache =
+            new(_symbolComparer);
 
         public static EquatableArray<ParseResult> Process(ImmutableArray<(TypeDeclarationSyntax declaration, SemanticModel semanticModel)> contexts, NamedTypeSymbols symbols, CancellationToken cancellationToken)
         {
@@ -54,79 +61,73 @@ namespace QueryByShape.Analyzer
             return (query, [.. _diagnostics]);
         }
 
-        public void ValidateVariables(IEnumerable<VariableMetadata>? variables, IList<ArgumentMetadata> arguments)
+        public void ValidateVariables(EquatableArray<VariableMetadata>? variables, IList<ArgumentMetadata> arguments)
         {
             // Nothing to validate
-            if (variables?.Any() != true && arguments.Count == 0)
+            if ((variables is null or { Count: 0 }) && arguments is { Count: 0 })
             {
                 return;
             }
 
-            var variableLookup = variables?.ToDictionary(v => v.Name, StringComparer.Ordinal) ?? new Dictionary<string, VariableMetadata>(StringComparer.Ordinal);
-            var unusedVariables = new HashSet<string>(variableLookup.Keys, StringComparer.Ordinal);
+            var vars = variables?.GetArray() ?? Array.Empty<VariableMetadata>();
+
+            var variableRefs = new ReferenceSet<string, VariableMetadata>(vars, v => v.Name, StringComparer.Ordinal);
 
             foreach (var argument in arguments)
             {
                 var varName = argument.VariableName;
 
-                if (variableLookup.TryGetValue(varName, out var variable) is false)
+                if (variableRefs.TryMarkReferenced(varName) is false)
                 {
                     _diagnostics.Add(MissingVariableDiagnostic.CreateMetadata(argument.Name, varName, argument.Reference.GetLocation()));
                     continue;
                 }
-
-                // Mark as used
-                unusedVariables.Remove(varName);
             }
 
             // Any remaining variables were not used by any argument
-            foreach (var variableName in unusedVariables)
+            foreach (var variable in variableRefs.GetUnreferenced())
             {
-                var variable = variableLookup[variableName];
-                _diagnostics.Add(UnusedVariableDiagnostic.CreateMetadata(variableName, variable.Reference.GetLocation()));
+                _diagnostics.Add(UnusedVariableDiagnostic.CreateMetadata(variable.Name, variable.Reference.GetLocation()));
             }
         }
 
 
         private void UpdateQueryFromAttributes(QueryMetadata query, ImmutableArray<AttributeData> attributes)
         {
-            Dictionary<string, VariableMetadata> variables = new(StringComparer.Ordinal);
+            Dictionary<string, VariableMetadata> variables = new(_stringComparer);
 
             foreach (var attribute in attributes)
             {
-                switch (attribute.ToFullName())
+                if (attribute.IsAttributeType(symbols.QueryAttribute))
                 {
-                    case AttributeNames.QUERY:
-                        foreach (var argument in attribute.NamedArguments)
+                    foreach (var argument in attribute.NamedArguments)
+                    {
+                        switch (argument.Key)
                         {
-                            switch (argument.Key)
-                            {
-                                case nameof(QueryAttribute.OperationName):
-                                    query.Name = (string)argument.Value.Value!;
-                                    break;
-                                case nameof(QueryAttribute.IncludeFields) when argument.Value.Value is bool includeFields:
-                                    query.Options.IncludeFields = includeFields;
-                                    break;
-                                case nameof(QueryAttribute.PropertyNamingPolicy) when argument.Value.Value is JsonPropertyNaming jsonPropertyNaming:
-                                    query.Options.PropertyNamingPolicy =jsonPropertyNaming;
-                                    break;
-                                case nameof(QueryAttribute.Formatting) when argument.Value.Value is SourceFormatting sourceFormatting:
-                                    query.Options.Formatting = sourceFormatting;
-                                    break;
-                            }
+                            case nameof(QueryAttribute.OperationName):
+                                query.Name = (string)argument.Value.Value!;
+                                break;
+                            case nameof(QueryAttribute.IncludeFields) when argument.Value.Value is bool includeFields:
+                                query.Options.IncludeFields = includeFields;
+                                break;
+                            case nameof(QueryAttribute.PropertyNamingPolicy) when argument.Value.Value is JsonPropertyNaming jsonPropertyNaming:
+                                query.Options.PropertyNamingPolicy = jsonPropertyNaming;
+                                break;
+                            case nameof(QueryAttribute.Formatting) when argument.Value.Value is SourceFormatting sourceFormatting:
+                                query.Options.Formatting = sourceFormatting;
+                                break;
                         }
-                        break;
-
-                    case AttributeNames.VARIABLE:
-                        var (variablName, graphType) = attribute.GetConstructorArguments();
+                    }
+                 
+                }
+                else if (attribute.IsAttributeType(symbols.VariableAttribute))
+                { 
+                    if (attribute.TryGetConstructorArguments(out string? variableName, out string? graphType) 
+                        && variables.ContainsKey(variableName) is false)
+                    {
                         var defaultValue = attribute.TryGetNamedArgument<object>(nameof(VariableAttribute.DefaultValue), out var value) ? value : null;
-
-                        if (variables.ContainsKey(variablName) == false)
-                        {
-                            variables.Add(variablName, new VariableMetadata(variablName, graphType, defaultValue, attribute.ApplicationSyntaxReference));
-                        }
-                    
-                        break;
+                        variables[variableName] = new VariableMetadata(variableName, graphType, defaultValue, attribute.ApplicationSyntaxReference);
+                    }
                 }
             }
 
@@ -134,24 +135,30 @@ namespace QueryByShape.Analyzer
         }
 
         private (TypeMetadata, List<ArgumentMetadata>) ParseTypeMetadata(INamedTypeSymbol type)
-        {
-            if (_typeCache.ContainsKey(type))
+        { 
+            if (_typeCache.TryGetValue(type, out var cachedType))
             {
-                return _typeCache[type];
+                return cachedType;
             }
 
             INamedTypeSymbol? current = type;
 
-            Dictionary<string, MemberMetadata> members = new(StringComparer.Ordinal);
+            Dictionary<string, MemberMetadata?> members = new(_stringComparer);
+            
             List<ArgumentMetadata> arguments = [];
 
-            while (current?.Name is not null or "Object" or "ValueType")
+            while (current is not null && current.SpecialType is not SpecialType.System_Object and not SpecialType.System_ValueType)
             {
                 foreach (var member in current.GetMembers())
                 {
+                    if ((member.Kind != SymbolKind.Property && member.Kind != SymbolKind.Field) || member.IsImplicitlyDeclared)
+                    {
+                        continue;
+                    }
+
                     var memberName = member.Name;
                     var attributes = member.GetAttributes();
-                    
+        
                     if (members.TryGetValue(memberName, out var metadata) is false)
                     {
                         metadata = ParseMemberMetadata(member, out var memberType);
@@ -170,14 +177,22 @@ namespace QueryByShape.Analyzer
                         }
 
                         UpdateMemberFromBaseAttributes(metadata, attributes);
-                        
+            
                         if (metadata.Arguments?.Count > 0)
                         {
                             arguments.AddRange(metadata.Arguments);
                         }
                     }
 
-                    UpdateMemberFromInheritedAttributes(metadata, attributes);
+                    if (metadata != null)
+                    {
+                        UpdateMemberFromInheritedAttributes(metadata, attributes);
+                        
+                        if (metadata.Ignore is true)
+                        {
+                            members[memberName] = null;
+                        }
+                    }
                 }
 
                 current = current.BaseType;
@@ -190,6 +205,19 @@ namespace QueryByShape.Analyzer
             _typeCache[type] = result;
             return result;
         }
+
+        private bool TryGetMemberType(ISymbol member, [NotNullWhen(true)] out INamedTypeSymbol? memberType)
+        {
+            memberType = member switch
+            {
+                IPropertySymbol property when symbols.IsPropertySerializable(property) => property.Type,
+                IFieldSymbol field when symbols.IsFieldSerializable(field) => field.Type,
+                _ => null
+            } as INamedTypeSymbol;
+            
+            return memberType is not null;
+        }
+
 
         private MemberMetadata ParseMemberMetadata(ISymbol member, out INamedTypeSymbol? memberType)
         {
@@ -208,31 +236,30 @@ namespace QueryByShape.Analyzer
 
         private void UpdateMemberFromBaseAttributes(MemberMetadata metadata, ImmutableArray<AttributeData> attributes)
         {
-            Dictionary<string, ArgumentMetadata> arguments = new(StringComparer.Ordinal);
-            HashSet<string> inlineFragments = new(StringComparer.Ordinal);
+            Dictionary<string, ArgumentMetadata> arguments = new(_stringComparer);
+            HashSet<string> inlineFragments = new(_stringComparer);
 
             foreach (var attribute in attributes)
             {
-                switch (attribute.ToFullName())
+                if (attribute.IsAttributeType(symbols.ArgumentAttribute))
                 {
-                    case AttributeNames.ARGUMENT:
-                        var (name, variableName) = attribute.GetConstructorArguments();
-
-                        if (arguments.ContainsKey(name) == false)
-                        {
-                            var argMetadata = new ArgumentMetadata(name, variableName, attribute.ApplicationSyntaxReference);
-                            arguments.Add(name, argMetadata);
-                        }
-                        break;
-
-                    case AttributeNames.ALIAS_OF:
-                        metadata.AliasOf = attribute.GetConstructorArgument();
-                        break;
-
-                    case AttributeNames.ON:
-                        inlineFragments.Add(attribute.GetConstructorArgument());
-                        break;
-                        
+                    if (attribute.TryGetConstructorArguments(out string? name, out string? variableName)
+                        && arguments.ContainsKey(name) is false)
+                    {
+                        var argMetadata = new ArgumentMetadata(name, variableName, attribute.ApplicationSyntaxReference);
+                        arguments[name] = argMetadata;
+                    }
+                }
+                else if (attribute.IsAttributeType(symbols.AliasOfAttribute))
+                {
+                    metadata.AliasOf = attribute.TryGetConstructorArgument(out string? alias) ? alias : null;
+                }
+                else if (attribute.IsAttributeType(symbols.OnAttribute))
+                {
+                    if (attribute.TryGetConstructorArgument(out string? on))
+                    {
+                        inlineFragments.Add(on);
+                    }
                 }
             }
 
@@ -244,19 +271,17 @@ namespace QueryByShape.Analyzer
         {
             foreach (var attribute in attributes)
             {
-                switch (attribute.ToFullName())
+                if (attribute.IsAttributeType(symbols.JsonPropertyAttribute) && metadata.OverrideName is null)
                 {
-                    case AttributeNames.JSON_PROPERTY when metadata.OverrideName is null:
-                        metadata.OverrideName = attribute.GetConstructorArgument();
-                        break;
-
-                    case AttributeNames.JSON_IGNORE when metadata.Ignore is null:
-                        var ignoreCondition = attribute.TryGetNamedArgument<int>(nameof(JsonIgnoreAttribute.Condition), out var condition)
+                    metadata.OverrideName = attribute.TryGetConstructorArgument(out string? overrideName) ? overrideName : null;
+                }
+                else if (attribute.IsAttributeType(symbols.JsonIgnoreAttribute) && metadata.Ignore is null)
+                { 
+                    var ignoreCondition = attribute.TryGetNamedArgument<int>(nameof(JsonIgnoreAttribute.Condition), out var condition)
                             ? (JsonIgnoreCondition)condition
                             : JsonIgnoreCondition.Always;
 
-                        metadata.Ignore = ignoreCondition is not JsonIgnoreCondition.Never;
-                        break;
+                    metadata.Ignore = ignoreCondition is not JsonIgnoreCondition.Never;       
                 }
             }
         }
