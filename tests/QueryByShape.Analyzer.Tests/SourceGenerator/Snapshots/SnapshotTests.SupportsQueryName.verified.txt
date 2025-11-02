@@ -9,6 +9,6 @@ namespace Tests
 {
     public partial class NameQuery
     {
-        public static string ToGraphQLQuery() => @"query renamed { people { name  } }";                 
+        public static string ToGraphQLQuery() => @"query renamed { people { name } }";                 
     }
 }

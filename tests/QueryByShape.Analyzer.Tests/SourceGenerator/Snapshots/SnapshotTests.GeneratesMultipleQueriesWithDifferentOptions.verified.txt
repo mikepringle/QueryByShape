@@ -9,7 +9,7 @@ namespace Tests
 {
     public partial class FirstQuery
     {
-        public static string ToGraphQLQuery() => @"query firstQuery($id:UUID!) { people(id:$id) { customerId  firstName  lastName  middleName  addressLine1  city  state  zipCode  } }";                 
+        public static string ToGraphQLQuery() => @"query firstQuery($id:UUID!) { people(id:$id) { customerId firstName lastName middleName addressLine1 city state zipCode } }";                 
     }
 }
 
@@ -23,6 +23,6 @@ namespace Tests
 {
     public partial class SecondQuery
     {
-        public static string ToGraphQLQuery() => @"query secondQuery($id:UUID!) { people(id:$id) { customerId  firstName  lastName  middleName  } }";                 
+        public static string ToGraphQLQuery() => @"query secondQuery($id:UUID!) { people(id:$id) { customerId firstName lastName middleName } }";                 
     }
 }

@@ -1,9 +1,7 @@
 ﻿using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Text;
-using QueryByShape.Analyzer.Diagnostics;
 using System.Collections.Generic;
 using System.Linq;
-using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 
@@ -28,14 +26,13 @@ namespace QueryByShape.Analyzer
         }
         private string EmitQuery()
         {
-            // variables dynamic or static set?  use case
-            // variables with object type (sorting)
-            
             _sb.Append("query ");
             _sb.Append(FormatName(query.Name ?? query.TypeName));
 
-            EmitParameters(query.Variables?.Select(v => v.DefaultValue == null ? $"{v.Name}:{v.GraphType}" : $"{v.Name}:{v.GraphType} = {JsonSerializer.Serialize(v.DefaultValue)}"));
-            EmitType(query.Type!, query.Options, 1);
+            var variables = query.Variables?.Select(v => v.DefaultValue == null ? $"{v.Name}:{v.GraphType}" : $"{v.Name}:{v.GraphType} = {JsonSerializer.Serialize(v.DefaultValue)}").ToArray();
+            _sb.AppendParentheses(variables);
+            
+            EmitType(query.Type, query.Options);
             
             return _sb.ToString();
         }
@@ -50,7 +47,7 @@ namespace QueryByShape.Analyzer
             return name;
         }
 
-        private void EmitType(TypeMetadata typeMetadata, QueryOptions options, int depth)
+        private void EmitType(TypeMetadata typeMetadata, QueryOptions options)
         {
             if (typeMetadata.Members is null)
             {
@@ -59,9 +56,9 @@ namespace QueryByShape.Analyzer
 
             var (members, fragmentMembers) = typeMetadata.Members.Value.Partition(m => m.On?.Count is not > 0);
 
-            _sb.AppendLine("{");
+            _sb.AppendStartBlock();
 
-            EmitMembers(members, options, depth);
+            EmitMembers(members, options);
 
             if (fragmentMembers.Count > 0)
             {
@@ -71,22 +68,24 @@ namespace QueryByShape.Analyzer
 
                 foreach (var fragment in fragments)
                 {
-                    _sb.AppendLine($"... on {fragment.Key} {{", depth);
-                    EmitMembers(fragment, options, depth + 1);
-                    _sb.AppendLine("}", depth);
+                    _sb.AppendLine();
+                    _sb.Append($"... on {fragment.Key}");
+                    _sb.AppendStartBlock();
+                    EmitMembers(fragment, options);
+                    _sb.AppendEndBlock();
                 }
             }
 
-            _sb.AppendLine("}", depth - 1);
+            _sb.AppendEndBlock();
         }
 
-        private void EmitMembers(IEnumerable<MemberMetadata> members, QueryOptions options, int depth)
+        private void EmitMembers(IEnumerable<MemberMetadata> members, QueryOptions options)
         {
             var filtered = options.IncludeFields == false ? members.Where(m => m.Kind == SymbolKind.Property) : members;
 
             foreach (var member in filtered)
             {
-                _sb.AppendIndent(depth);
+                _sb.AppendLine();
                 _sb.Append(member.OverrideName ?? FormatName(member.Name));
 
                 if (member.AliasOf != null)
@@ -95,29 +94,14 @@ namespace QueryByShape.Analyzer
                     _sb.Append(member.AliasOf);
                 }
 
-                EmitParameters(member.Arguments?.Select(a => $"{a.Name}:{a.VariableName}"));
-                
+                var arguments = member.Arguments?.Select(a => $"{a.Name}:{a.VariableName}").ToArray();
+                _sb.AppendParentheses(arguments);
+
                 if (member.ChildrenType?.Members?.Count > 0)
                 {
-                    EmitType(member.ChildrenType, options, depth + 1);
-                }
-                else
-                {
-                    _sb.AppendLine(string.Empty);
+                    EmitType(member.ChildrenType, options);
                 }
             }
-        }
-
-        internal void EmitParameters(IEnumerable<string>? items)
-        {
-            if (items == null || !items.Any())
-            {
-                return;
-            }
-
-            _sb.Append("(");
-            _sb.Append(string.Join(",", items));
-            _sb.Append(")");
         }
     }
 }

@@ -2,6 +2,7 @@
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using System;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Text.Json.Serialization;
 using System.Xml.Linq;
@@ -12,8 +13,10 @@ namespace QueryByShape.Analyzer
     {
         public static string ToFullName(this AttributeData attribute)
         {
-            var attributeClass = attribute.AttributeClass ?? throw new NullReferenceException();
-            return $"{attributeClass.GetNamespace()}.{attributeClass.Name}";    
+            return attribute.AttributeClass?
+                .ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)
+                .Replace("global::", string.Empty) 
+                ?? throw new ArgumentNullException(nameof(attribute));
         }
 
         public static string ExtractName(this NameSyntax nameSyntax)
@@ -47,42 +50,69 @@ namespace QueryByShape.Analyzer
 
         public static INamedTypeSymbol ResolveNamedType<T>(this Compilation compilation)
         {
-            return compilation.GetTypeByMetadataName(typeof(T).FullName)!;
+            var name = typeof(T).FullName ?? throw new InvalidOperationException("No metadata name for type");
+            var symbol = compilation.GetTypeByMetadataName(name);
+            return symbol ?? throw new InvalidOperationException($"Type '{name}' not found in compilation");
         }
 
-        public static string GetConstructorArgument(this AttributeData attribute) => GetConstructorArguments(attribute)[0];
-        public static string[] GetConstructorArguments(this AttributeData attribute) => attribute.ConstructorArguments.Select(c => c.Value?.ToString() ?? "").ToArray();
-        
-        public static bool TryGetNamedArgument<T>(this AttributeData attribute, string name, out T? value)
-        {
-            value = default;
-
-            var arguments = attribute.NamedArguments.Where(a => a.Key == name);
-            
-            if (arguments.Any())
+        public static bool TryGetConstructorArgument<T>(this AttributeData attribute, [NotNullWhen(true)] out T? value) 
+        {            
+            if (attribute?.ConstructorArguments.Length > 0 && attribute.ConstructorArguments[0].Value is T argument)
             {
-                value = (T?)arguments.First().Value.Value; 
+                value = argument;
                 return true;
             }
 
+            value = default;
             return false;
+        }
+
+        public static bool TryGetConstructorArguments<TFirst, TSecond>(this AttributeData attribute, [NotNullWhen(true)] out TFirst? first, [NotNullWhen(true)] out TSecond? second)
+        {
+            if (attribute?.ConstructorArguments.Length > 1 && attribute.ConstructorArguments[0].Value is TFirst firstArg && attribute.ConstructorArguments[1].Value is TSecond secondArg)
+            {
+                first = firstArg;
+                second = secondArg;
+                return true;
+            }
+
+            first = default;
+            second = default;
+            return false;
+        }
+
+        public static bool TryGetNamedArgument<T>(this AttributeData attribute, string name, out T? value)
+        {
+            foreach (var kv in attribute.NamedArguments) 
+            { 
+                if (kv.Key == name && kv.Value.Value is T t) 
+                { 
+                    value = t; 
+                    return true; 
+                } 
+            }
+            
+            value = default; 
+            return false;
+          }
+
+        public static bool IsAttributeType(this AttributeData? attribute, INamedTypeSymbol? targetType)
+        {
+            var sourceType = attribute?.AttributeClass;
+
+            if (sourceType is null || targetType is null)
+            {
+                return false;
+            }
+
+            return SymbolEqualityComparer.Default.Equals(sourceType, targetType);
         }
 
         public static string GetNamespace(this INamedTypeSymbol symbol)
         {
-            return string.Join(".", GetNamespace_Internal(symbol.ContainingNamespace));
-            
-            static string[] GetNamespace_Internal(INamespaceSymbol symbol, int index = 0)
-            {
-                if (symbol.ContainingNamespace == null) 
-                {
-                    return new string[index];
-                }
-                
-                var result = GetNamespace_Internal(symbol.ContainingNamespace, index + 1);
-                result[result.Length - index - 1] = symbol.Name;
-                return result;
-            }
+            return symbol.ContainingNamespace
+                .ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)
+                .Replace("global::", string.Empty);
         }
 
         public static bool TryGetCompatibleGenericBaseType(this ITypeSymbol type, INamedTypeSymbol? baseType, out INamedTypeSymbol? result)
@@ -150,6 +180,15 @@ namespace QueryByShape.Analyzer
             return false;
         }
 
-        public static Location ToTrimmedLocation(this Location location) => Location.Create(location.SourceTree!.FilePath, location.SourceSpan, location.GetLineSpan().Span);
+        public static Location ToTrimmedLocation(this Location location)
+        {
+            if (location == Location.None || location.SourceTree is null)
+            {
+                return location;
+            }
+            
+            return Location.Create(location.SourceTree.FilePath, location.SourceSpan, location.GetLineSpan().Span);
+        } 
+
     }
 }
