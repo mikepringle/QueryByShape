@@ -40,8 +40,8 @@ namespace QueryByShape.Analyzer
         public INamedTypeSymbol OnAttribute => _onAttribute ??= compilation.GetTypeByMetadataName(typeof(OnAttribute).FullName)!;
         private INamedTypeSymbol? _onAttribute;
 
-        public INamedTypeSymbol MutationAttribute => _mutationAttribute ??= compilation.GetTypeByMetadataName(typeof(MutationAttribute).FullName)!;
-        private INamedTypeSymbol? _mutationAttribute;
+        //public INamedTypeSymbol MutationAttribute => _mutationAttribute ??= compilation.GetTypeByMetadataName(typeof(MutationAttribute).FullName)!;
+        //private INamedTypeSymbol? _mutationAttribute;
 
         public INamedTypeSymbol JsonIgnoreAttribute => _jsonIgnoreAttribute ??= compilation.GetTypeByMetadataName(typeof(JsonIgnoreAttribute).FullName)!;
         private INamedTypeSymbol? _jsonIgnoreAttribute;
