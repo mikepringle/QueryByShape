@@ -26,7 +26,7 @@ namespace QueryByShape.Analyzer
         public QueryOptions Options { get; set; } = new QueryOptions();
     }
 
-    internal record TypeMetadata(string Name, EquatableArray<MemberMetadata>? Members);
+    internal record TypeMetadata(string Name, EquatableArray<MemberMetadata> Members);
  
     internal record MemberMetadata(string Name, SymbolKind Kind)
     {
@@ -35,8 +35,6 @@ namespace QueryByShape.Analyzer
         public string? AliasOf { get; set; }
 
         public bool? Ignore { get; set; }
-
-        public bool IsSerializable { get; set; }
 
         public EquatableArray<ArgumentMetadata>? Arguments { get; set; }
 

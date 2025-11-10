@@ -17,23 +17,50 @@ namespace QueryByShape.Analyzer
             var (query, diagnostics) = result;
             var emitter = new QueryEmitter(query);
 
-            if (diagnostics.Any(d => d.Descriptor.DefaultSeverity is DiagnosticSeverity.Error) is false)
+            if (diagnostics?.Any(d => d.Descriptor.DefaultSeverity is DiagnosticSeverity.Error) == true)
             {
-                string graphQlQuery = emitter.EmitQuery();
-                var generatedClass = GeneratorTemplate.Build(graphQlQuery, query.NamespaceName, query.TypeName);
-                ctx.AddSource($"QueryByShape.{query.TypeFullName}.Query.g.cs", SourceText.From(generatedClass, Encoding.UTF8));
+                return;
             }
+
+            string graphQlQuery = emitter.EmitQuery();
+            var generatedClass = GeneratorTemplate.Build(graphQlQuery, query.NamespaceName, query.TypeName);
+            ctx.AddSource($"QueryByShape.{query.TypeFullName}.Query.g.cs", SourceText.From(generatedClass, Encoding.UTF8));
         }
         private string EmitQuery()
         {
             _sb.Append("query ");
             _sb.Append(FormatName(query.Name ?? query.TypeName));
 
-            var variables = query.Variables?.Select(v => v.DefaultValue == null ? $"{v.Name}:{v.GraphType}" : $"{v.Name}:{v.GraphType} = {JsonSerializer.Serialize(v.DefaultValue)}").ToArray();
-            _sb.AppendParentheses(variables);
-            
+            if (query.Variables?.Count > 0)
+            {
+                var variables = query.Variables.Value;
+                _sb.Append("(");
+
+                for (int i = 0; i < variables.Count; i++)
+                {
+                    var variable = variables[i];
+                
+                    if (i != 0)
+                    {
+                        _sb.Append(",");
+                    }
+                    
+                    _sb.Append(variable.Name);
+                    _sb.Append(":");
+                    _sb.Append(variable.GraphType);
+                    
+                    if (variable.DefaultValue != null)
+                    {
+                        _sb.Append(" = ");
+                        _sb.Append(JsonSerializer.Serialize(variable.DefaultValue));
+                    }
+                }
+                
+                _sb.Append(")");
+            }
+
             EmitType(query.Type, query.Options);
-            
+
             return _sb.ToString();
         }
 
@@ -49,29 +76,49 @@ namespace QueryByShape.Analyzer
 
         private void EmitType(TypeMetadata typeMetadata, QueryOptions options)
         {
-            if (typeMetadata.Members is null)
-            {
-                return;
-            }
+            var members = typeMetadata.Members;
 
-            var (members, fragmentMembers) = typeMetadata.Members.Value.Partition(m => m.On?.Count is not > 0);
+            var withoutFragments =  new List<MemberMetadata>(members.Count);
+            var withFragments = new Dictionary<string, List<MemberMetadata>>();
+            
+            foreach (var member in typeMetadata.Members)
+            {
+                if (member.Ignore == true || (member.Kind == SymbolKind.Field && !options.IncludeFields))
+                {
+                    continue;
+                }
+
+                if (member.On?.Count > 0)
+                {
+                    foreach (var fragment in member.On)
+                    {
+                        if (!withFragments.TryGetValue(fragment, out var fragmentMembers))
+                        {
+                            fragmentMembers = new List<MemberMetadata>();
+                            withFragments[fragment] = fragmentMembers;
+                        }
+
+                        fragmentMembers.Add(member);
+                    }
+                }
+                else
+                {
+                    withoutFragments.Add(member);
+                }
+            }
 
             _sb.AppendStartBlock();
 
-            EmitMembers(members, options);
+            EmitMembers(withoutFragments, options);
 
-            if (fragmentMembers.Count > 0)
+            if (withFragments.Count > 0)
             {
-                var fragments = fragmentMembers
-                                    .SelectMany(m => m.On!.Value, (m, o) => (fragment: o, member: m))
-                                    .GroupBy(m => m.fragment, m => m.member);
-
-                foreach (var fragment in fragments)
+                foreach (var fragment in withFragments)
                 {
                     _sb.AppendLine();
                     _sb.Append($"... on {fragment.Key}");
                     _sb.AppendStartBlock();
-                    EmitMembers(fragment, options);
+                    EmitMembers(fragment.Value, options);
                     _sb.AppendEndBlock();
                 }
             }
@@ -79,11 +126,9 @@ namespace QueryByShape.Analyzer
             _sb.AppendEndBlock();
         }
 
-        private void EmitMembers(IEnumerable<MemberMetadata> members, QueryOptions options)
+        private void EmitMembers(List<MemberMetadata> members, QueryOptions options)
         {
-            var filtered = options.IncludeFields == false ? members.Where(m => m.Kind == SymbolKind.Property) : members;
-
-            foreach (var member in filtered)
+            foreach (var member in members)
             {
                 _sb.AppendLine();
                 _sb.Append(member.OverrideName ?? FormatName(member.Name));
@@ -94,10 +139,29 @@ namespace QueryByShape.Analyzer
                     _sb.Append(member.AliasOf);
                 }
 
-                var arguments = member.Arguments?.Select(a => $"{a.Name}:{a.VariableName}").ToArray();
-                _sb.AppendParentheses(arguments);
+                if (member.Arguments?.Count > 0)
+                {
+                    var arguments = member.Arguments.Value;
+                    _sb.Append("(");
 
-                if (member.ChildrenType?.Members?.Count > 0)
+                    for (int i = 0; i < arguments.Count; i++)
+                    {
+                        var argument = arguments[i];
+
+                        if (i != 0)
+                        {
+                            _sb.Append(",");
+                        }
+
+                        _sb.Append(argument.Name);
+                        _sb.Append(":");
+                        _sb.Append(argument.VariableName);
+                    }
+
+                    _sb.Append(")");
+                }
+
+                if (member.ChildrenType?.Members.Count > 0)
                 {
                     EmitType(member.ChildrenType, options);
                 }
