@@ -24,13 +24,15 @@ namespace QueryByShape.Analyzer
                     AttributeNames.QUERY,
                     (node, cancellationToken) => node is ClassDeclarationSyntax or RecordDeclarationSyntax,
                     (context, cancellationToken) => (Context: (TypeDeclarationSyntax)context.TargetNode, context.SemanticModel))
-                .Collect()
                 .Combine(symbols)
-                .SelectMany(static (tuple, cancellationToken) => QueryParser.Process(tuple.Left, tuple.Right, cancellationToken));
-
+                .Select(static (tuple, cancellationToken) =>
+                {
+                    var queryParser = new QueryParser(tuple.Right);
+                    return queryParser.Parse(tuple.Left.Context, tuple.Left.SemanticModel, cancellationToken);
+                });
 
             context.RegisterSourceOutput(
-                queryContext.SelectMany((x, _) => x.Diagnostics),
+                queryContext.Where(q => q.Diagnostics is not null).SelectMany((x, _) => x.Diagnostics.Value),
                 static (context, metadata) => context.ReportDiagnostic(metadata.ToDiagnostic())
             );
 

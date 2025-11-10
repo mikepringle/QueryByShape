@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace QueryByShape.Analyzer
 {
@@ -9,17 +10,17 @@ namespace QueryByShape.Analyzer
     /// </summary>
     internal sealed class ReferenceSet<TKey, TValue>
     {
-        private readonly TValue[] _items;
+        private readonly IList<TValue> _items;
         private readonly Dictionary<TKey, int> _unreferenced;
         private readonly HashSet<TKey> _initialKeys;
 
-        public ReferenceSet(TValue[] items, Func<TValue, TKey> keySelector, IEqualityComparer<TKey> comparer)
+        public ReferenceSet(IList<TValue>? items, Func<TValue, TKey> keySelector, IEqualityComparer<TKey> comparer)
         {
             _items = items ?? Array.Empty<TValue>();
-            _unreferenced = new Dictionary<TKey, int>(_items.Length, comparer);
+            _unreferenced = new Dictionary<TKey, int>(_items.Count, comparer);
             _initialKeys = new HashSet<TKey>(comparer);
 
-            for (var i = 0; i < _items.Length; i++)
+            for (var i = 0; i < _items.Count; i++)
             {
                 var key = keySelector(_items[i]);
 

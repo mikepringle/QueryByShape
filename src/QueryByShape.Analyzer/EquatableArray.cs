@@ -1,8 +1,12 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Collections.Immutable;
+using System.Collections.ObjectModel;
+using System.Drawing;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Xml.Linq;
 
 namespace QueryByShape.Analyzer
 {
@@ -16,35 +20,23 @@ namespace QueryByShape.Analyzer
     /// </summary>
     /// <param name="array">The input <see cref="ImmutableArray"/> to wrap.</param>
     [CollectionBuilder(typeof(EquatableArrayBuilder), nameof(EquatableArrayBuilder.Create))]
-    internal readonly struct EquatableArray<T>(T[] array) : IEquatable<EquatableArray<T>>, IEnumerable<T> where T : IEquatable<T>
+    internal readonly struct EquatableArray<T>(T[] array) : IList<T>, IEquatable<EquatableArray<T>> where T : IEquatable<T>
     {
-        public static readonly EquatableArray<T> Empty = new([]);
-
-        /// <summary>
-        /// The underlying <typeparamref name="T"/> array.
-        /// </summary>
-        private readonly T[]? _array = array;
-        
         /// <sinheritdoc/>
-        public bool Equals(EquatableArray<T> array)
+        public bool Equals(EquatableArray<T> compare)
         {
-            return AsSpan().SequenceEqual(array.AsSpan());
+            return AsSpan().SequenceEqual(compare.AsSpan());
         }
 
         /// <sinheritdoc/>
         public override bool Equals(object? obj)
         {
-            return obj is EquatableArray<T> array && Equals(this, array);
+            return obj is EquatableArray<T> compare && Equals(this, compare);
         }
 
         /// <sinheritdoc/>
         public override int GetHashCode()
         {
-            if (_array is not T[] array)
-            {
-                return 0;
-            }
-
             HashCode hashCode = default;
 
             foreach (T item in array)
@@ -61,27 +53,59 @@ namespace QueryByShape.Analyzer
         /// <returns>A <see cref="ReadOnlySpan{T}"/> wrapping the current items.</returns>
         public ReadOnlySpan<T> AsSpan()
         {
-            return _array.AsSpan();
+            return array.AsSpan();
         }
-
-        /// <summary>
-        /// Gets the underlying array if there is one
-        /// </summary>
-        public T[]? GetArray() => _array;
 
         /// <sinheritdoc/>
         IEnumerator<T> IEnumerable<T>.GetEnumerator()
         {
-            return ((IEnumerable<T>)(_array ?? [])).GetEnumerator();
+            return ((IEnumerable<T>)(array)).GetEnumerator();
         }
 
         /// <sinheritdoc/>
         IEnumerator IEnumerable.GetEnumerator()
         {
-            return ((IEnumerable<T>)(_array ?? [])).GetEnumerator();
+            return ((IEnumerable<T>)(array)).GetEnumerator();
         }
 
-        public int Count => _array?.Length ?? 0;
+        public void Add(T item)
+        {
+            throw new NotSupportedException();
+        }
+
+        public void Clear()
+        {
+            throw new NotSupportedException();
+        }
+
+        public bool Contains(T item) => array.Contains(item);
+
+        public void CopyTo(T[] destination, int arrayIndex) => array.CopyTo(destination, arrayIndex);
+
+        public bool Remove(T item)
+        {
+            throw new NotSupportedException();
+        }
+
+        public int IndexOf(T item) => Array.IndexOf(array, item);
+        
+        public void Insert(int index, T item)
+        {
+            throw new NotSupportedException();
+        }
+
+        public void RemoveAt(int index)
+        {
+            throw new NotSupportedException();
+        }
+
+        public int Count => array.Length;
+
+        public bool IsReadOnly => true;
+
+        T IList<T>.this[int index] { get => array[index]; set => throw new NotSupportedException(); }
+
+        public T this[int index] => array[index];
 
         public static bool operator ==(EquatableArray<T> left, EquatableArray<T> right)
         {

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Text;
+using static Microsoft.CodeAnalysis.CSharp.SyntaxTokenParser;
 using static System.Net.Mime.MediaTypeNames;
 
 namespace QueryByShape.Analyzer
@@ -50,18 +51,6 @@ namespace QueryByShape.Analyzer
         internal void Append(string text)
         {
             sb.Append(text);
-        }
-
-        internal void AppendParentheses(string[]? values)
-        {
-            if (values == null || values.Length == 0)
-            {
-                return;
-            }
-
-            sb.Append("(");
-            sb.AppendJoin(",", values);
-            sb.Append(")");
         }
 
         public override string ToString() => sb.ToString();

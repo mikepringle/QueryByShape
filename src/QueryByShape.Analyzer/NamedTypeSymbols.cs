@@ -1,5 +1,6 @@
 ﻿using Microsoft.CodeAnalysis;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 using System.Text.Json.Serialization;
 
@@ -84,7 +85,7 @@ namespace QueryByShape.Analyzer
             ) is false;
         }
 
-        public bool TryGetChildrenType(ITypeSymbol type, out INamedTypeSymbol? childrenType)
+        public bool TryGetChildrenType(ITypeSymbol type, [NotNullWhen(true)] out INamedTypeSymbol? childrenType)
         {
             childrenType = null;
             ITypeSymbol? effectiveType = null;
