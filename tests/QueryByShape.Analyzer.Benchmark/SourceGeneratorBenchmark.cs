@@ -1,13 +1,7 @@
 ﻿using BenchmarkDotNet.Attributes;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
-using Microsoft.CodeAnalysis.Text;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Text.Json.Serialization;
-using System.Threading.Tasks;
 
 namespace QueryByShape.Analyzer.Benchmark
 {
@@ -17,12 +11,16 @@ namespace QueryByShape.Analyzer.Benchmark
         private SyntaxTree[] _syntaxTrees;
         private MetadataReference[] _references;
         private CSharpCompilation _compilation;
+        private CSharpCompilation[] _rerunCompilations;
+
+        [Params(0, 5, 10)]
+        public int RerunTimes;
 
         [GlobalSetup]
         public void GlobalSetup()
         {
             string baseDirectory = AppContext.BaseDirectory;
-            Console.WriteLine($"Base Directory: {baseDirectory}");  
+            Console.WriteLine($"Base Directory: {baseDirectory}");
             string directory = Path.GetFullPath(Path.Combine(baseDirectory, @"..\..\..\..\..\..\..\Queries"));
             Console.WriteLine($"Loading source files from: {directory}");
             var trees = new List<SyntaxTree>();
@@ -32,7 +30,7 @@ namespace QueryByShape.Analyzer.Benchmark
                 string fileSource = File.ReadAllText(file);
                 trees.Add(CSharpSyntaxTree.ParseText(fileSource));
             }
-            
+
             _syntaxTrees = trees.ToArray();
 
 
@@ -53,20 +51,41 @@ namespace QueryByShape.Analyzer.Benchmark
             _compilation = CSharpCompilation.Create("SourceGeneratorTests",
                           _syntaxTrees,
                           _references,
-                          new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));                       
+                          new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
+
+            _rerunCompilations = new CSharpCompilation[RerunTimes];
+
+            for (var i = 0; i < RerunTimes; i++)
+            {
+                _rerunCompilations[i] = _compilation.Clone();
+            }
         }
 
         [Benchmark]
         public void RunGenerator()
         {
-            var generator = new QueryGenerator();
+            var generator = new QueryGenerator().AsSourceGenerator();
 
-            GeneratorDriver driver = CSharpGeneratorDriver
-                                        .Create(generator)
-                                        .RunGenerators(_compilation);
-            
-            //var results = driver.GetRunResult().Results.SelectMany(x => x.GeneratedSources).Select(x => x.SourceText.ToString()).ToArray();
-            //return string.Join('\n', results);
+            var opts = new GeneratorDriverOptions(
+                disabledOutputs: IncrementalGeneratorOutputKind.None,
+                trackIncrementalGeneratorSteps: true);
+
+            GeneratorDriver driver = CSharpGeneratorDriver.Create([generator], driverOptions: opts);
+            driver = driver.RunGenerators(_compilation);
+            GeneratorDriverRunResult runResult = driver.GetRunResult();
+
+            for (var i = 0; i < _rerunCompilations.Length; i++)
+            {
+                GeneratorDriverRunResult rerunResult = driver.RunGenerators(_rerunCompilations[i]).GetRunResult();
+                var cached = rerunResult
+                    .Results[0]
+                    .TrackedOutputSteps
+                    .Where(x => x.Value.SelectMany(y => y.Outputs).Any(z => z.Reason == IncrementalStepRunReason.Cached))
+                    .Select(x => x.Key)
+                    .ToArray();
+
+                Console.WriteLine($"Rerun Cached: " + (cached.Length == 0 ? "None" : String.Join(',', cached)));
+            }
         }
     }
 }
