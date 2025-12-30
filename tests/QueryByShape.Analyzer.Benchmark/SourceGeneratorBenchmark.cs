@@ -13,7 +13,7 @@ namespace QueryByShape.Analyzer.Benchmark
         private CSharpCompilation _compilation;
         private CSharpCompilation[] _rerunCompilations;
 
-        [Params(0, 5, 10)]
+        [Params(0, 1)]
         public int RerunTimes;
 
         [GlobalSetup]
@@ -28,7 +28,12 @@ namespace QueryByShape.Analyzer.Benchmark
             foreach (string file in Directory.EnumerateFiles(directory))
             {
                 string fileSource = File.ReadAllText(file);
-                trees.Add(CSharpSyntaxTree.ParseText(fileSource));
+
+                for (var i = 0; i < 25; i++)
+                {
+                    var interation = fileSource.Replace("_i", Convert.ToChar(65+i).ToString());
+                    trees.Add(CSharpSyntaxTree.ParseText(interation));
+                }
             }
 
             _syntaxTrees = trees.ToArray();
@@ -73,6 +78,15 @@ namespace QueryByShape.Analyzer.Benchmark
             GeneratorDriver driver = CSharpGeneratorDriver.Create([generator], driverOptions: opts);
             driver = driver.RunGenerators(_compilation);
             GeneratorDriverRunResult runResult = driver.GetRunResult();
+
+            if (runResult.Diagnostics.Any())
+            {
+                foreach (var diag in runResult.Diagnostics)
+                {
+                    Console.WriteLine(diag.ToString());
+                }
+                throw new Exception("Diagnostics reported during generation");
+            }
 
             for (var i = 0; i < _rerunCompilations.Length; i++)
             {

@@ -2,7 +2,7 @@
 {
     [Query]
     [Variable("$starshipID", "ID!")]
-    public partial class QueryStarshipById : IGeneratedQuery
+    public partial class QueryStarshipById_i : IGeneratedQuery
     {
         [Argument("starshipID", "$starshipID")]
         public StarshipSummary Starship { get; set; }

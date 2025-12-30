@@ -3,9 +3,9 @@
 namespace QueryByShape.Analyzer.Benchmark.Queries
 {
     [Query]
-    public partial class QueryFilmListAll : IGeneratedQuery
+    public partial class QueryFilmListAll_i : IGeneratedQuery
     {
         [JsonPropertyName("AllFilms")]
-        public AllFilmSummary Films { get; set; }
+        public AllFilmSummary_i Films { get; set; }
     }
 }

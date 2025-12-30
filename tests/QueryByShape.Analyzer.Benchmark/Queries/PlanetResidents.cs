@@ -1,7 +1,7 @@
 ﻿namespace QueryByShape.Analyzer.Benchmark.Queries
 {
-    public class PlanetResidents
+    public class PlanetResidents_i
     {
-        public List<PersonDetails> Residents { get; set; }
+        public List<PersonDetails_i> Residents { get; set; }
     }
 }

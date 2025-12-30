@@ -2,9 +2,9 @@
 {
     [Query]
     [Variable("$planetID", "ID!")]
-    public partial class QueryResidentsByPlanetId : IGeneratedQuery
+    public partial class QueryResidentsByPlanetId_i : IGeneratedQuery
     {
         [Argument("planetID", "$planetID")]
-        public PlanetResidentsConnection Planet { get; set; }
+        public PlanetResidentsConnection_i Planet { get; set; }
     }
 }

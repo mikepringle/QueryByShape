@@ -1,7 +1,7 @@
 ﻿namespace QueryByShape.Analyzer.Benchmark.Queries
 {
-    public class CharacterConnection
+    public class CharacterConnection_i
     {
-        public List<PersonDetails> Characters { get; set; } 
+        public List<PersonDetails_i> Characters { get; set; } 
     }
 }

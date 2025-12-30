@@ -1,7 +1,7 @@
 ﻿namespace QueryByShape.Analyzer.Benchmark.Queries
 {
-    public class AllPlantSummary
+    public class AllPlantSummary_i
     {
-        public List<PlanetSummary> Planets { get; set; }
+        public List<PlanetSummary_i> Planets { get; set; }
     }
 }

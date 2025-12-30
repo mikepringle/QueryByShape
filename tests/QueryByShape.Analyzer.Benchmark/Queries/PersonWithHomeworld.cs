@@ -1,8 +1,8 @@
 ﻿namespace QueryByShape.Analyzer.Benchmark.Queries
 {
-    public class PersonWithHomeworld
+    public class PersonWithHomeworld_i
     {
         public string Name { get; set; }
-        public PlanetSummary Homeworld { get; set; }
+        public PlanetSummary_i Homeworld { get; set; }
     }
 }
