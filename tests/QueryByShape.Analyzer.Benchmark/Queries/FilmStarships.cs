@@ -1,6 +1,6 @@
 ﻿namespace QueryByShape.Analyzer.Benchmark.Queries
 {
-    public class FilmStarships
+    public class FilmStarships_i
     {
         public List<StarshipSummary> Starships { get; set; }
     }

@@ -1,6 +1,6 @@
 ﻿namespace QueryByShape.Analyzer.Benchmark.Queries
 {
-    public class PlanetSummary
+    public class PlanetSummary_i
     {
         public string Name { get; set; }
         public List<string> Terrain { get; set; }

@@ -2,7 +2,7 @@
 
 namespace QueryByShape.Analyzer.Benchmark.Queries
 {
-    public class PersonDetails
+    public class PersonDetails_i
     {
         public DateTime BirthYear { get; set; }
         
@@ -20,7 +20,7 @@ namespace QueryByShape.Analyzer.Benchmark.Queries
 
         public int Height { get; set; }
 
-        public PlanetSummary Planet { get; set; }
+        public PlanetSummary_i Planet { get; set; }
 
         public decimal Mass { get; set; }
 

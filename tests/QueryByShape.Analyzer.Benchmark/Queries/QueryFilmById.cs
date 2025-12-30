@@ -2,9 +2,9 @@
 {
     [Query]
     [Variable("$filmID", "ID!")]
-    public partial class QueryFilmById : IGeneratedQuery
+    public partial class QueryFilmById_i : IGeneratedQuery
     {
         [Argument("filmID", "$filmID")]
-        public FilmSummary Film { get; set; }
+        public FilmSummary_i Film { get; set; }
     }
 }

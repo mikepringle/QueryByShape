@@ -2,9 +2,9 @@
 {
     [Query]
     [Variable("$personID", "ID!")]
-    public partial class QueryVitalByPersonId : IGeneratedQuery
+    public partial class QueryVitalByPersonId_i : IGeneratedQuery
     {
         [Argument("personID", "$personID")]
-        public PersonVitals Person { get; set; }
+        public PersonVitals_i Person { get; set; }
     }
 }

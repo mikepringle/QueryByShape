@@ -1,7 +1,7 @@
 ﻿namespace QueryByShape.Analyzer.Benchmark.Queries
 {
-    public class AllFilmSummary
+    public class AllFilmSummary_i
     {
-        public List<FilmSummary> Films { get; set; }
+        public List<FilmSummary_i> Films { get; set; }
     }
 }

@@ -1,8 +1,8 @@
 ﻿namespace QueryByShape.Analyzer.Benchmark.Queries
 {
     [Query]
-    public partial class QueryPeopleCount : IGeneratedQuery
+    public partial class QueryPeopleCount_i : IGeneratedQuery
     {
-        public PeopleCount AllPeople { get; set; }
+        public PeopleCount_i AllPeople { get; set; }
     }
 }

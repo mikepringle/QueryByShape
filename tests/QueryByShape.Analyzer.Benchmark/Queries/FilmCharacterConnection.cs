@@ -1,8 +1,8 @@
 ﻿namespace QueryByShape.Analyzer.Benchmark.Queries
 {
-    public class FilmCharacterConnection
+    public class FilmCharacterConnection_i
     {
         public string Title { get; set; }
-        public CharacterConnection CharacterConnection { get; set; }
+        public CharacterConnection_i CharacterConnection { get; set; }
     }
 }
