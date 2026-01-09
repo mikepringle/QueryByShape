@@ -6,74 +6,66 @@ using QueryByShape.Analyzer.Diagnostics;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.Diagnostics.CodeAnalysis;
 using System.Linq;
-using System.Reflection;
 using System.Text.Json.Serialization;
 using System.Threading;
 
 namespace QueryByShape.Analyzer
 {
-    internal class QueryParser(NamedTypeSymbols symbols)
+    internal class QueryParser  
     {
         private static readonly StringComparer _stringComparer = StringComparer.Ordinal;
+        private readonly NamedTypeSymbols _symbols;
+        private readonly List<DiagnosticMetadata> _diagnostics = new();
+        private readonly ReferenceSet<string> _variableRefs = new(_stringComparer);
+        private CancellationToken _cancellationToken;
 
-        public ParseResult Parse(TypeDeclarationSyntax typeDeclaration, SemanticModel semanticModel, CancellationToken cancellationToken)
+        private QueryParser(NamedTypeSymbols symbols, CancellationToken cancellationToken)
         {
-            var declaredSymbol = semanticModel.GetDeclaredSymbol(typeDeclaration)!;
-
-            var (types, queryArguments) = ParseTypeMetadata(declaredSymbol, cancellationToken);
-            
-            var query = new QueryMetadata(declaredSymbol.Name, declaredSymbol.GetNamespace(), types);
-            
-            UpdateQueryFromAttributes(query, declaredSymbol.GetAttributes());
-            ValidateVariables(query.Variables, queryArguments, out var diagnostics);
-            
-            return (query, diagnostics != null ? [.. diagnostics] : null);
+            _symbols = symbols;
+            _cancellationToken = cancellationToken;
         }
 
-        public void ValidateVariables(EquatableArray<VariableMetadata>? variables, IList<ArgumentMetadata> arguments, out List<DiagnosticMetadata>? diagnostics)
+        public static ParseResult Parse(TypeDeclarationSyntax typeDeclaration, SemanticModel semanticModel, NamedTypeSymbols symbols, CancellationToken cancellationToken)
         {
-            diagnostics = null;
+            var parser = new QueryParser(symbols, cancellationToken);
+            var declaredSymbol = semanticModel.GetDeclaredSymbol(typeDeclaration)!;
+            return parser.ParseQuery(declaredSymbol);
+        }
 
-            // Nothing to validate
-            if ((variables == null || variables?.Count == 0) && arguments.Count == 0)
+        private ParseResult ParseQuery(INamedTypeSymbol declaredSymbol)
+        {
+            var query = new QueryMetadata(declaredSymbol.Name, declaredSymbol.GetNamespace());
+            UpdateQueryFromAttributes(query, declaredSymbol.GetAttributes());
+            query.Type = ParseTypeMetadata(declaredSymbol);
+            ValidateVariables(query.Variables);
+
+            return (query, new (_diagnostics.ToArray()));
+        }
+
+        private void ValidateVariables(EquatableArray<VariableMetadata>? variables)
+        {
+            if (variables == null)
             {
                 return;
             }
-
-            var variableRefs = new ReferenceSet<string, VariableMetadata>(variables, v => v.Name, StringComparer.Ordinal);
-
-            foreach (var argument in arguments)
+            
+            foreach (var variable in variables)
             {
-                var varName = argument.VariableName;
-
-                if (!variableRefs.TryMarkReferenced(varName))
+                if (_variableRefs.IsReferenced(variable.Name) is false)
                 {
-                    diagnostics ??= new List<DiagnosticMetadata>();
-                    diagnostics.Add(MissingVariableDiagnostic.CreateMetadata(argument.Name, varName, argument.Reference.GetLocation()));
-                    continue;
+                    _diagnostics.Add(UnusedVariableDiagnostic.CreateMetadata(variable.Name, variable.Reference.GetLocation()));
                 }
             }
-
-            // Any remaining variables were not used by any argument
-            foreach (var variable in variableRefs.GetUnreferenced())
-            {
-                diagnostics ??= new List<DiagnosticMetadata>();
-                diagnostics.Add(UnusedVariableDiagnostic.CreateMetadata(variable.Name, variable.Reference.GetLocation()));
-            }
-
         }
-
 
         private void UpdateQueryFromAttributes(QueryMetadata query, ImmutableArray<AttributeData> attributes)
         {
-            List<VariableMetadata> variables = [];
-            HashSet<string> existingVariables = new(_stringComparer);
-
+            List<VariableMetadata> variables = new();
+            
             foreach (var attribute in attributes)
             {
-                if (attribute.IsAttributeType(symbols.QueryAttribute))
+                if (attribute.IsAttributeType(_symbols.QueryAttribute))
                 {
                     foreach (var argument in attribute.NamedArguments)
                     {
@@ -95,31 +87,30 @@ namespace QueryByShape.Analyzer
                     }
                  
                 }
-                else if (attribute.IsAttributeType(symbols.VariableAttribute))
+                else if (attribute.IsAttributeType(_symbols.VariableAttribute))
                 { 
                     if (attribute.TryGetConstructorArguments(out string? variableName, out string? graphType) 
-                        && !existingVariables.Contains(variableName))
+                        && _variableRefs.TryAddSource(variableName))
                     {
                         var defaultValue = attribute.TryGetNamedArgument<object>(nameof(VariableAttribute.DefaultValue), out var value) ? value : null;
                         variables.Add(new VariableMetadata(variableName, graphType, defaultValue, attribute.ApplicationSyntaxReference));
-                        existingVariables.Add(variableName);
                     }
                 }
             }
 
-            query.Variables = [.. variables];
+            query.Variables = new(variables.ToArray());
         }
 
-        private (TypeMetadata, List<ArgumentMetadata>) ParseTypeMetadata(INamedTypeSymbol type, CancellationToken cancellationToken)
+        private TypeMetadata ParseTypeMetadata(INamedTypeSymbol type)
         {
             INamedTypeSymbol? current = type;
-            Dictionary<string, MemberMetadata> members = new(_stringComparer);
-            HashSet<string> skippedMembers = new(_stringComparer);
-            List<ArgumentMetadata> arguments = [];
+
+            Dictionary<string, MemberMetadata> members = new(_stringComparer); 
+            HashSet<string> skippedMembers = new(_stringComparer); 
 
             while (current != null && current.SpecialType is not SpecialType.System_Object and not SpecialType.System_ValueType)
             {
-                cancellationToken.ThrowIfCancellationRequested();
+                _cancellationToken.ThrowIfCancellationRequested();
 
                 foreach (var member in current.GetMembers())
                 {
@@ -134,7 +125,7 @@ namespace QueryByShape.Analyzer
         
                     if (!members.TryGetValue(memberName, out var metadata))
                     {
-                        if (!TryGetSerializableMemberType(member, out var memberType))
+                        if (!_symbols.TryGetSerializableMemberType(member, out var memberType))
                         {
                             skippedMembers.Add(memberName);
                             continue;
@@ -143,19 +134,12 @@ namespace QueryByShape.Analyzer
                         metadata = new MemberMetadata(member.Name, member.Kind);
                         members[memberName] = metadata;
 
-                        if (symbols.TryGetChildrenType(memberType!, out var childrenType))
+                        if (_symbols.TryGetChildrenType(memberType!, out var childrenType))
                         {
-                            var (childMetadata, childArguments) = ParseTypeMetadata(childrenType, cancellationToken);
-                            metadata.ChildrenType = childMetadata;
-                            arguments.AddRange(childArguments);
+                            metadata.ChildrenType = ParseTypeMetadata(childrenType);
                         }
 
                         UpdateMemberFromBaseAttributes(metadata, attributes);
-            
-                        if (metadata.Arguments?.Count > 0)
-                        {
-                            arguments.AddRange(metadata.Arguments);
-                        }
                     }
 
                     UpdateMemberFromInheritedAttributes(metadata, attributes);
@@ -165,60 +149,45 @@ namespace QueryByShape.Analyzer
                         members.Remove(memberName);
                         skippedMembers.Add(memberName);
                         continue;
-                    }
-                    else if (metadata.Ignore != null && metadata.OverrideName != null)
-                    {
-                        continue;
                     }                    
                 }
 
                 current = current.BaseType;
             }
 
-            var typeMetadata = new TypeMetadata(type.ToDisplayString(), [.. members.Values]);
-            
-            return (typeMetadata, arguments);
+            var result = new TypeMetadata(new (members.Values.ToArray()));
+            return result;
         }
 
-        private bool TryGetSerializableMemberType(ISymbol member, [NotNullWhen(true)] out INamedTypeSymbol? memberType)
-        {
-            memberType = member switch
-            {
-                IPropertySymbol property when symbols.IsPropertySerializable(property) => property.Type,
-                IFieldSymbol field when symbols.IsFieldSerializable(field) => field.Type,
-                _ => null
-            } as INamedTypeSymbol;
-
-            if (memberType == null || !symbols.IsTypeSerializable(memberType))
-            {
-                memberType = null;
-                return false;
-            }
-
-            return true;
-        }
-        
         private void UpdateMemberFromBaseAttributes(MemberMetadata metadata, ImmutableArray<AttributeData> attributes)
         {
             Dictionary<string, ArgumentMetadata> arguments = new(_stringComparer);
-            HashSet<string> inlineFragments = new(_stringComparer);
+            HashSet<string> inlineFragments = new(_stringComparer); 
             
             foreach (var attribute in attributes)
             {
-                if (attribute.IsAttributeType(symbols.ArgumentAttribute))
+                if (attribute.IsAttributeType(_symbols.ArgumentAttribute))
                 {
                     if (attribute.TryGetConstructorArguments(out string? name, out string? variableName)
                         && !arguments.ContainsKey(name))
                     {
-                        var argMetadata = new ArgumentMetadata(name, variableName, attribute.ApplicationSyntaxReference);
-                        arguments[name] = argMetadata;
+                        if (_variableRefs.TryMarkReferenced(variableName))
+                        {
+                            var argMetadata = new ArgumentMetadata(name, variableName);
+                            arguments[name] = argMetadata;
+                        }
+                        else
+                        {
+                            _diagnostics.Add(MissingVariableDiagnostic.CreateMetadata(name, variableName, attribute.GetLocation()));
+                            continue;
+                        }
                     }
                 }
-                else if (attribute.IsAttributeType(symbols.AliasOfAttribute))
+                else if (attribute.IsAttributeType(_symbols.AliasOfAttribute))
                 {
                     metadata.AliasOf = attribute.TryGetConstructorArgument(out string? alias) ? alias : null;
                 }
-                else if (attribute.IsAttributeType(symbols.OnAttribute))
+                else if (attribute.IsAttributeType(_symbols.OnAttribute))
                 {
                     if (attribute.TryGetConstructorArgument(out string? on))
                     {
@@ -227,19 +196,19 @@ namespace QueryByShape.Analyzer
                 }
             }
 
-            metadata.Arguments = [.. arguments.Values];
-            metadata.On = [.. inlineFragments];
+            metadata.Arguments = new(arguments.Values.ToArray());
+            metadata.On = new(inlineFragments.ToArray());
         }
 
         private void UpdateMemberFromInheritedAttributes(MemberMetadata metadata, ImmutableArray<AttributeData> attributes)
         {
             foreach (var attribute in attributes)
             {
-                if (attribute.IsAttributeType(symbols.JsonPropertyAttribute))
+                if (attribute.IsAttributeType(_symbols.JsonPropertyAttribute))
                 {
                     metadata.OverrideName ??= attribute.TryGetConstructorArgument(out string? overrideName) ? overrideName : null;
                 }
-                else if (attribute.IsAttributeType(symbols.JsonIgnoreAttribute))
+                else if (attribute.IsAttributeType(_symbols.JsonIgnoreAttribute))
                 { 
                     var ignoreCondition = attribute.TryGetNamedArgument<int>(nameof(JsonIgnoreAttribute.Condition), out var condition)
                             ? (JsonIgnoreCondition)condition

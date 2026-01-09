@@ -8,28 +8,29 @@ namespace QueryByShape.Analyzer
     /// Tracks a fixed set of values and allows marking keys as referenced.
     /// First occurrence of a duplicate key is preserved (first-win).
     /// </summary>
-    internal sealed class ReferenceSet<TKey, TValue>
+    internal sealed class ReferenceSet<TKey> where TKey : notnull
     {
-        private readonly IList<TValue> _items;
-        private readonly Dictionary<TKey, int> _unreferenced;
-        private readonly HashSet<TKey> _initialKeys;
-
-        public ReferenceSet(IList<TValue>? items, Func<TValue, TKey> keySelector, IEqualityComparer<TKey> comparer)
+        private readonly Dictionary<TKey, bool> _references;
+        
+        public ReferenceSet(IEqualityComparer<TKey> comparer)
         {
-            _items = items ?? Array.Empty<TValue>();
-            _unreferenced = new Dictionary<TKey, int>(_items.Count, comparer);
-            _initialKeys = new HashSet<TKey>(comparer);
+            _references = new(comparer);
+        }
 
-            for (var i = 0; i < _items.Count; i++)
+        public bool TryAddSource(TKey key)
+        {
+            if (_references.ContainsKey(key))
             {
-                var key = keySelector(_items[i]);
-
-                // First-win: ignore duplicate keys
-                if (_initialKeys.Add(key))
-                {
-                    _unreferenced[key] = i;
-                }
+                return false;
             }
+
+            _references[key] = false;
+            return true;
+        }
+
+        public bool IsReferenced(TKey key)
+        {
+            return _references.TryGetValue(key, out var isReferenced) && isReferenced;
         }
 
         /// <summary>
@@ -37,34 +38,13 @@ namespace QueryByShape.Analyzer
         /// </summary>
         public bool TryMarkReferenced(TKey key)
         {
-            if (_initialKeys.Contains(key) is false)
+            if (_references.ContainsKey(key) is false)
             {
                 return false;
             }
 
-            _unreferenced.Remove(key);
+            _references[key] = true;
             return true;
-        }
-
-        /// <summary>
-        /// Returns the items that were not referenced.
-        /// </summary>
-        public TValue[] GetUnreferenced()
-        {
-            if (_unreferenced.Count == 0)
-            {
-                return Array.Empty<TValue>();
-            }
-
-            var result = new TValue[_unreferenced.Count];
-            var idx = 0;
-
-            foreach (var kv in _unreferenced)
-            {
-                result[idx++] = _items[kv.Value];
-            }
-
-            return result;
         }
     }
 }

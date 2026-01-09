@@ -7,34 +7,20 @@ using System.Text.Json;
 
 namespace QueryByShape.Analyzer
 {
-    internal class QueryEmitter(QueryMetadata query)
+    internal static class QueryEmitter
     {
-        private readonly SourceBuilder _sb = new(query.Options.Formatting);
-        private readonly JsonPropertyNaming _propertyNaming = query.Options.PropertyNamingPolicy;
-
-        public static void EmitSource(SourceProductionContext ctx, ParseResult result)
+        public static void EmitQuery(QueryMetadata query, StringBuilder builder)
         {
-            var (query, diagnostics) = result;
-            var emitter = new QueryEmitter(query);
+            SourceBuilder sb = new(query.Options.Formatting, builder);
 
-            if (diagnostics?.Any(d => d.Descriptor.DefaultSeverity is DiagnosticSeverity.Error) == true)
-            {
-                return;
-            }
-
-            string graphQlQuery = emitter.EmitQuery();
-            var generatedClass = GeneratorTemplate.Build(graphQlQuery, query.NamespaceName, query.TypeName);
-            ctx.AddSource($"QueryByShape.{query.TypeFullName}.Query.g.cs", SourceText.From(generatedClass, Encoding.UTF8));
-        }
-        private string EmitQuery()
-        {
-            _sb.Append("query ");
-            _sb.Append(FormatName(query.Name ?? query.TypeName));
+            sb.Append("query ");
+            
+            EmitName(query.Name ?? query.TypeName, query.Options.PropertyNamingPolicy, sb);
 
             if (query.Variables?.Count > 0)
             {
                 var variables = query.Variables.Value;
-                _sb.Append("(");
+                sb.Append('(');
 
                 for (int i = 0; i < variables.Count; i++)
                 {
@@ -42,39 +28,39 @@ namespace QueryByShape.Analyzer
                 
                     if (i != 0)
                     {
-                        _sb.Append(",");
+                        sb.Append(',');
                     }
                     
-                    _sb.Append(variable.Name);
-                    _sb.Append(":");
-                    _sb.Append(variable.GraphType);
+                    sb.Append(variable.Name);
+                    sb.Append(':');
+                    sb.Append(variable.GraphType);
                     
                     if (variable.DefaultValue != null)
                     {
-                        _sb.Append(" = ");
-                        _sb.Append(JsonSerializer.Serialize(variable.DefaultValue));
+                        sb.Append(" = ");
+                        sb.Append(JsonSerializer.Serialize(variable.DefaultValue));
                     }
                 }
                 
-                _sb.Append(")");
+                sb.Append(')');
             }
 
-            EmitType(query.Type, query.Options);
-
-            return _sb.ToString();
+            EmitType(query.Type!, query.Options, sb);
         }
 
-        private string FormatName(string name)
+        private static void EmitName(string name, JsonPropertyNaming namingPolicy, SourceBuilder sb)
         {
-            if (_propertyNaming == JsonPropertyNaming.CamelCase)
+            if (namingPolicy == JsonPropertyNaming.CamelCase)
             {
-                return JsonNamingPolicy.CamelCase.ConvertName(name);
+                sb.Append(JsonNamingPolicy.CamelCase.ConvertName(name));
             }
-
-            return name;
+            else
+            {
+                sb.Append(name);
+            }
         }
 
-        private void EmitType(TypeMetadata typeMetadata, QueryOptions options)
+        private static void EmitType(TypeMetadata typeMetadata, QueryOptions options, SourceBuilder sb)
         {
             var members = typeMetadata.Members;
 
@@ -107,42 +93,52 @@ namespace QueryByShape.Analyzer
                 }
             }
 
-            _sb.AppendStartBlock();
+            sb.AppendStartBlock();
 
-            EmitMembers(withoutFragments, options);
+            EmitMembers(withoutFragments, options, sb);
 
             if (withFragments.Count > 0)
             {
                 foreach (var fragment in withFragments)
                 {
-                    _sb.AppendLine();
-                    _sb.Append($"... on {fragment.Key}");
-                    _sb.AppendStartBlock();
-                    EmitMembers(fragment.Value, options);
-                    _sb.AppendEndBlock();
+                    sb.AppendLine();
+                    sb.Append("... on ");
+                    sb.Append(fragment.Key);
+                    
+                    sb.AppendStartBlock();
+                    EmitMembers(fragment.Value, options, sb);
+                    sb.AppendEndBlock();
                 }
             }
 
-            _sb.AppendEndBlock();
+            sb.AppendEndBlock();
         }
 
-        private void EmitMembers(List<MemberMetadata> members, QueryOptions options)
+        private static void EmitMembers(List<MemberMetadata> members, QueryOptions options, SourceBuilder sb)
         {
             foreach (var member in members)
             {
-                _sb.AppendLine();
-                _sb.Append(member.OverrideName ?? FormatName(member.Name));
+                sb.AppendLine();
+
+                if (member.OverrideName != null)
+                {
+                    sb.Append(member.OverrideName);
+                }
+                else
+                {
+                     EmitName(member.Name, options.PropertyNamingPolicy, sb);
+                }
 
                 if (member.AliasOf != null)
                 {
-                    _sb.Append(":");
-                    _sb.Append(member.AliasOf);
+                    sb.Append(':');
+                    sb.Append(member.AliasOf);
                 }
 
                 if (member.Arguments?.Count > 0)
                 {
                     var arguments = member.Arguments.Value;
-                    _sb.Append("(");
+                    sb.Append('(');
 
                     for (int i = 0; i < arguments.Count; i++)
                     {
@@ -150,20 +146,20 @@ namespace QueryByShape.Analyzer
 
                         if (i != 0)
                         {
-                            _sb.Append(",");
+                            sb.Append(',');
                         }
 
-                        _sb.Append(argument.Name);
-                        _sb.Append(":");
-                        _sb.Append(argument.VariableName);
+                        sb.Append(argument.Name);
+                        sb.Append(':');
+                        sb.Append(argument.VariableName);
                     }
 
-                    _sb.Append(")");
+                    sb.Append(')');
                 }
 
                 if (member.ChildrenType?.Members.Count > 0)
                 {
-                    EmitType(member.ChildrenType, options);
+                    EmitType(member.ChildrenType, options, sb);
                 }
             }
         }
