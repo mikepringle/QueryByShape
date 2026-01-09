@@ -1,6 +1,9 @@
 ﻿using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Microsoft.CodeAnalysis.Text;
 using QueryByShape.Analyzer.Diagnostics;
+using System.Linq;
+using System.Text;
 
 namespace QueryByShape.Analyzer
 {
@@ -16,7 +19,7 @@ namespace QueryByShape.Analyzer
                 //Debugger.Launch();
             }
 #endif
-            var symbols = context.CompilationProvider
+            var _symbols = context.CompilationProvider
                 .Select((compilation, _) => new NamedTypeSymbols(compilation))
                 .WithTrackingName(TrackingNames.Symbols);
 
@@ -28,11 +31,10 @@ namespace QueryByShape.Analyzer
                 .WithTrackingName(TrackingNames.QueryDeclarations);
                                 
            var queryContext = queryDeclarationss     
-                .Combine(symbols)
+                .Combine(_symbols)
                 .Select(static (tuple, cancellationToken) =>
                 {
-                    var queryParser = new QueryParser(tuple.Right);
-                    return queryParser.Parse(tuple.Left.Context, tuple.Left.SemanticModel, cancellationToken);
+                    return QueryParser.Parse(tuple.Left.Context, tuple.Left.SemanticModel, tuple.Right, cancellationToken);
                 })
                 .WithTrackingName(TrackingNames.QueryHierarchy);
 
@@ -41,7 +43,18 @@ namespace QueryByShape.Analyzer
                 static (context, metadata) => context.ReportDiagnostic(metadata.ToDiagnostic())
             );
 
-            context.RegisterSourceOutput(queryContext, QueryEmitter.EmitSource);
+            context.RegisterSourceOutput(queryContext, static (ctx, result) => 
+            {
+                var (query, diagnostics) = result;
+
+                if (diagnostics != null && diagnostics.Value.Any(d => d.Descriptor.DefaultSeverity is DiagnosticSeverity.Error))
+                {
+                    return;
+                }
+
+                var generatedClass = QueryTemplate.Build(query);
+                ctx.AddSource($"QueryByShape.{query.NamespaceName}.{query.TypeName}.Query.g.cs", SourceText.From(generatedClass, Encoding.UTF8));
+            });
         }
     }
 }

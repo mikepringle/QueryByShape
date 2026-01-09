@@ -10,7 +10,7 @@ using System.Xml.Linq;
 
 namespace QueryByShape.Analyzer
 {
-    internal static class EquatableArrayBuilder
+    internal static class EquatableArrayCollectionBuilder
     {
         public static EquatableArray<T> Create<T>(ReadOnlySpan<T> values) where T : IEquatable<T> => new(values.ToArray());
     }
@@ -19,8 +19,8 @@ namespace QueryByShape.Analyzer
     /// Creates a new <see cref="EquatableArray{T}"/> instance.
     /// </summary>
     /// <param name="array">The input <see cref="ImmutableArray"/> to wrap.</param>
-    [CollectionBuilder(typeof(EquatableArrayBuilder), nameof(EquatableArrayBuilder.Create))]
-    internal readonly struct EquatableArray<T>(T[] array) : IList<T>, IEquatable<EquatableArray<T>> where T : IEquatable<T>
+    [CollectionBuilder(typeof(EquatableArrayCollectionBuilder), nameof(EquatableArrayCollectionBuilder.Create))]
+    internal readonly struct EquatableArray<T>(T[] array) : IReadOnlyList<T>, IEquatable<EquatableArray<T>> where T : IEquatable<T>
     {
         /// <sinheritdoc/>
         public bool Equals(EquatableArray<T> compare)
@@ -68,42 +68,7 @@ namespace QueryByShape.Analyzer
             return ((IEnumerable<T>)(array)).GetEnumerator();
         }
 
-        public void Add(T item)
-        {
-            throw new NotSupportedException();
-        }
-
-        public void Clear()
-        {
-            throw new NotSupportedException();
-        }
-
-        public bool Contains(T item) => array.Contains(item);
-
-        public void CopyTo(T[] destination, int arrayIndex) => array.CopyTo(destination, arrayIndex);
-
-        public bool Remove(T item)
-        {
-            throw new NotSupportedException();
-        }
-
-        public int IndexOf(T item) => Array.IndexOf(array, item);
-        
-        public void Insert(int index, T item)
-        {
-            throw new NotSupportedException();
-        }
-
-        public void RemoveAt(int index)
-        {
-            throw new NotSupportedException();
-        }
-
         public int Count => array.Length;
-
-        public bool IsReadOnly => true;
-
-        T IList<T>.this[int index] { get => array[index]; set => throw new NotSupportedException(); }
 
         public T this[int index] => array[index];
 

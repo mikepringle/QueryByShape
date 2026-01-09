@@ -85,6 +85,24 @@ namespace QueryByShape.Analyzer
             ) is false;
         }
 
+        public bool TryGetSerializableMemberType(ISymbol member, [NotNullWhen(true)] out INamedTypeSymbol? memberType)
+        {
+            memberType = member switch
+            {
+                IPropertySymbol property when IsPropertySerializable(property) => property.Type,
+                IFieldSymbol field when IsFieldSerializable(field) => field.Type,
+                _ => null
+            } as INamedTypeSymbol;
+
+            if (memberType == null || !IsTypeSerializable(memberType))
+            {
+                memberType = null;
+                return false;
+            }
+
+            return true;
+        }
+
         public bool TryGetChildrenType(ITypeSymbol type, [NotNullWhen(true)] out INamedTypeSymbol? childrenType)
         {
             childrenType = null;

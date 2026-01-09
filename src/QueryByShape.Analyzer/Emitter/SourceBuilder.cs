@@ -1,13 +1,10 @@
 ﻿using System;
 using System.Text;
-using static Microsoft.CodeAnalysis.CSharp.SyntaxTokenParser;
-using static System.Net.Mime.MediaTypeNames;
 
 namespace QueryByShape.Analyzer
 {
-    internal class SourceBuilder(SourceFormatting formatting)
+    internal class SourceBuilder(SourceFormatting formatting, StringBuilder sb)
     {
-        private readonly StringBuilder sb = new StringBuilder();
         private int depth = 0;
         
         internal void AppendStartBlock()
@@ -51,6 +48,11 @@ namespace QueryByShape.Analyzer
         internal void Append(string text)
         {
             sb.Append(text);
+        }
+
+        internal void Append(char character)
+        {
+            sb.Append(character);
         }
 
         public override string ToString() => sb.ToString();

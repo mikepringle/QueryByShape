@@ -15,18 +15,18 @@ namespace QueryByShape.Analyzer
 
     internal record DiagnosticMetadata(DiagnosticDescriptor Descriptor, Location Location, EquatableArray<string>? MessageArguments = null);
 
-    internal record QueryMetadata(string TypeName, string NamespaceName, TypeMetadata Type)
+    internal record QueryMetadata(string TypeName, string NamespaceName)
     {
-        public string? Name { get; set; }
+        public TypeMetadata? Type { get; set; }
 
-        public string TypeFullName { get; } = $"{NamespaceName}.{TypeName}";
+        public string? Name { get; set; }
 
         public EquatableArray<VariableMetadata>? Variables { get; set; }
 
         public QueryOptions Options { get; set; } = new QueryOptions();
     }
 
-    internal record TypeMetadata(string Name, EquatableArray<MemberMetadata> Members);
+    internal record TypeMetadata(EquatableArray<MemberMetadata> Members);
  
     internal record MemberMetadata(string Name, SymbolKind Kind)
     {
@@ -43,7 +43,7 @@ namespace QueryByShape.Analyzer
         public TypeMetadata? ChildrenType { get; set; }
     }
 
-    internal record ArgumentMetadata(string Name, string VariableName, SyntaxReference? Reference);
+    internal readonly record struct ArgumentMetadata(string Name, string VariableName);
 
-    internal record VariableMetadata(string Name, string GraphType, object? DefaultValue, SyntaxReference? Reference);
+    internal readonly record struct VariableMetadata(string Name, string GraphType, object? DefaultValue, SyntaxReference? Reference);
 }
