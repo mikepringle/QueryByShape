@@ -31,7 +31,7 @@ namespace QueryByShape.Analyzer.Analyzers
 
             var name = attributeSyntax.Name.ExtractName();
 
-            if (name is not "Variable" or nameof(VariableAttribute))
+            if (name is not ("Variable" or nameof(VariableAttribute)))
             {
                 return;
             }
@@ -75,8 +75,9 @@ namespace QueryByShape.Analyzer.Analyzers
         {
             var dupes = attributes.Where(a => a.IsAttributeType(attributeNamedType) && a.TryGetConstructorArgument(out string? argument) && argument == name);
 
-            if (dupes.First() != activeAttribute)
-            { 
+            var first = dupes.FirstOrDefault();
+            if (first != null && first != activeAttribute)
+            {
                 context.ReportDiagnostic(
                     DuplicateVariableDiagnostic.Create(name, activeAttribute.GetLocation())
                 );
