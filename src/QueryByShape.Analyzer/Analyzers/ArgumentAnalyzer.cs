@@ -31,7 +31,7 @@ namespace QueryByShape.Analyzer.Analyzers
 
             var name = attributeSyntax.Name.ExtractName();
 
-            if (name is not "Argument" or nameof(ArgumentAttribute))
+            if (name is not ("Argument" or nameof(ArgumentAttribute)))
             {
                 return;
             }
@@ -65,7 +65,8 @@ namespace QueryByShape.Analyzer.Analyzers
         {
             var dupes = attributes.Where(a => a.IsAttributeType(attributeNamedType) && a.TryGetConstructorArgument(out string? argument) && argument == name);
 
-            if (dupes.First() != activeAttribute)
+            var first = dupes.FirstOrDefault();
+            if (first != null && first != activeAttribute)
             {
                 context.ReportDiagnostic(
                     DuplicateArgumentDiagnostic.Create(name, activeAttribute.GetLocation())

@@ -6,7 +6,7 @@ namespace QueryByShape.Analyzer.Diagnostics
     {
         internal static DiagnosticDescriptor Descriptor { get; } = DescriptorHelper.Create(
             id: 111,
-            title: "Invalid argumemnt name",
+            title: "Invalid argument name",
             messageFormat: "Argument name '{0}' is not valid. {1}",
             defaultSeverity: DiagnosticSeverity.Error
         );

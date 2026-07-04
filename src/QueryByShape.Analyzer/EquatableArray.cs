@@ -22,19 +22,19 @@ namespace QueryByShape.Analyzer
     [CollectionBuilder(typeof(EquatableArrayCollectionBuilder), nameof(EquatableArrayCollectionBuilder.Create))]
     internal readonly struct EquatableArray<T>(T[] array) : IReadOnlyList<T>, IEquatable<EquatableArray<T>> where T : IEquatable<T>
     {
-        /// <sinheritdoc/>
+        /// <inheritdoc/>
         public bool Equals(EquatableArray<T> compare)
         {
             return AsSpan().SequenceEqual(compare.AsSpan());
         }
 
-        /// <sinheritdoc/>
+        /// <inheritdoc/>
         public override bool Equals(object? obj)
         {
             return obj is EquatableArray<T> compare && Equals(this, compare);
         }
 
-        /// <sinheritdoc/>
+        /// <inheritdoc/>
         public override int GetHashCode()
         {
             HashCode hashCode = default;
@@ -56,13 +56,13 @@ namespace QueryByShape.Analyzer
             return array.AsSpan();
         }
 
-        /// <sinheritdoc/>
+        /// <inheritdoc/>
         IEnumerator<T> IEnumerable<T>.GetEnumerator()
         {
             return ((IEnumerable<T>)(array)).GetEnumerator();
         }
 
-        /// <sinheritdoc/>
+        /// <inheritdoc/>
         IEnumerator IEnumerable.GetEnumerator()
         {
             return ((IEnumerable<T>)(array)).GetEnumerator();

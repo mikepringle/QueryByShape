@@ -22,12 +22,17 @@ namespace QueryByShape.Analyzer
                 errors.Add("First character of name may not be numeric");
             }
 
+            if (name.StartsWith("__"))
+            {
+                errors.Add("Names beginning with __ are reserved by GraphQL");
+            }
+
             for (int i = 0; i < name.Length; i++)
             {
                 char c = name[i];
                 if (char.IsLetterOrDigit(c) == false && c is not '_')
                 {
-                    errors.Add("Must only contain alphanumeric characters or undercores");
+                    errors.Add("Must only contain alphanumeric characters or underscores");
                     return false;
                 }
             }            

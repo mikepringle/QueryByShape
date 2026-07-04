@@ -23,14 +23,14 @@ namespace QueryByShape.Analyzer
                 .Select((compilation, _) => new NamedTypeSymbols(compilation))
                 .WithTrackingName(TrackingNames.Symbols);
 
-            var queryDeclarationss = context.SyntaxProvider
+            var queryDeclarations = context.SyntaxProvider
                 .ForAttributeWithMetadataName(
                     AttributeNames.QUERY,
                     (node, cancellationToken) => node is ClassDeclarationSyntax or RecordDeclarationSyntax,
                     (context, cancellationToken) => (Context: (TypeDeclarationSyntax)context.TargetNode, context.SemanticModel))
                 .WithTrackingName(TrackingNames.QueryDeclarations);
                                 
-           var queryContext = queryDeclarationss     
+           var queryContext = queryDeclarations     
                 .Combine(_symbols)
                 .Select(static (tuple, cancellationToken) =>
                 {
